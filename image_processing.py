@@ -117,7 +117,7 @@ def process_images(images: List[np.ndarray], temporal_average_window_size: int, 
     averaged_imgs = compute_temporal_average(images, temporal_average_window_size)
     cv2.imshow("Averaged Image", cv2.resize(averaged_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
 
-    filtered_imgs = apply_median_filter(averaged_imgs, median_kernel_size)
+    filtered_imgs = apply_median_filter(images, median_kernel_size)
     cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     
     # Increase sharpness
