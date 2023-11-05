@@ -1,3 +1,7 @@
 neosens-env/
-raw_images/
+01_images_raw/
+02_images_processed/
+03_images_masked/
+04_images_segmented/
+05_Results/
 __pycache__
