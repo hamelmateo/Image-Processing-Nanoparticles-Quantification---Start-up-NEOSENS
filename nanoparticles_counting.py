@@ -1,5 +1,5 @@
 """
-Created on Thu Sep 19 10:35:22 2023
+Created on Sun Oct 22 14:21:03 2023
 
 @author: Mateo HAMEL
 """
@@ -15,20 +15,27 @@ except ImportError as e:
 
 def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[str], output_folder: str, block_size: int, constant: int) -> List[np.ndarray]:
     """
-    Apply Otsu thresholding followed by closing and Watershed segmentation.
+    Apply adaptive thresholding and save the result.
 
     Args:
         images (List[np.ndarray]): List of images to segment.
+        filenames (List[str]): List of filenames corresponding to each image.
         output_folder (str): Folder to save the output images.
+        block_size (int): The size of the neighbourhood area used for threshold calculation.
+        constant (int): A constant value subtracted from mean or weighted sum of the neighbourhood pixels.
 
     Returns:
         List[np.ndarray]: List of segmented images.    
     """
+    if not images:
+        raise ValueError("The list of images is empty.")
+    if len(images) != len(filenames):
+        raise ValueError("The number of images and filenames must be the same.")
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    segmented_images = []
 
+    segmented_images = []
 
     for i, img in enumerate(images):
         # Ensure the image is in grayscale
@@ -52,11 +59,18 @@ def get_circle_roi(image: np.ndarray, roi_radius: int) -> np.ndarray:
     Ask the user to define a circular ROI on the image.
 
     Args:
-        img (np.ndarray): The image on which to define the ROI.
+        image (np.ndarray): The image on which to define the ROI.
+        roi_radius (int): The radius of the circular ROI.
 
     Returns:
         np.ndarray: The mask image (same size as input, 0 outside ROI, 255 inside).
     """
+    if not isinstance(image, np.ndarray):
+        raise TypeError("The image must be a NumPy array.")
+    if roi_radius <= 0:
+        raise ValueError("ROI radius must be a positive integer.")
+
+    
     mask = np.zeros_like(image)
     
     def draw_circle(event, x, y, flags, param):
@@ -80,16 +94,22 @@ def get_circle_roi(image: np.ndarray, roi_radius: int) -> np.ndarray:
 
 def apply_masking_roi(segm_images: List[np.ndarray], images: List[np.ndarray], filenames: List[str], output_folder: str, roi_radius:int) -> List[Tuple[np.ndarray, str]]:
     """
-    Ask the user to define a circular ROI on one of the images and apply a masking on everything besides the ROI to all images of the list.
+    Apply a circular ROI mask to a list of images.
 
     Args:
-        images (List[np.ndarray]): List of images to apply the mask to.
+        segm_images (List[np.ndarray]): List of segmented images to apply the mask to.
+        images (List[np.ndarray]): Original list of images to define the ROI.
+        filenames (List[str]): List of filenames corresponding to each image.
+        output_folder (str): Directory where masked images will be saved.
+        roi_radius (int): The radius of the ROI to be applied.
 
     Returns:
-        List[np.ndarray]: List of masked images.    
+        List[Tuple[np.ndarray, str]]: List of tuples, each containing a masked image and its filename.
     """
-    if not images:
-        return []
+    if not segm_images or not images:
+        raise ValueError("The lists of segmented or original images are empty.")
+    if len(segm_images) != len(images) or len(images) != len(filenames):
+        raise ValueError("All lists must have the same number of elements.")
     
     masked_imgs = []
     for i, img in enumerate(images):
@@ -114,11 +134,15 @@ def count_white_pixels(binary_image: np.ndarray) -> int:
     Count the number of white pixels in a binary image.
 
     Args:
-        binary_image: Binary image where white pixels have the value 255.
+        binary_image (np.ndarray): The binary image to analyze.
 
     Returns:
         int: The number of white pixels.
     """
-    # Assuming white pixels are 255, count all non-zero values
-    
+    if not isinstance(binary_image, np.ndarray):
+        raise TypeError("The input must be a NumPy array.")
+    if binary_image.ndim != 2 or binary_image.dtype != np.uint8:
+        raise ValueError("The image must be a 2D array with a uint8 datatype.")
+
+    # Count white pixels
     return cv2.countNonZero(binary_image)

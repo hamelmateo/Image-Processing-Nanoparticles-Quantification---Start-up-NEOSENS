@@ -4,20 +4,24 @@ Created on Thu Sep 19 10:35:22 2023
 @author: Mateo HAMEL
 """
 
-# Standard Library Imports
-import os
-import time
-import json
-from typing import List, Tuple
+try:
+    # Standard Library Imports
+    import os
+    import time
+    import json
+    from typing import List, Tuple
 
-# Third-party Library Imports
-import cv2
-import numpy as np
-import pandas as pd
+    # Third-party Library Imports
+    import cv2
+    import numpy as np
+    import pandas as pd
 
-# Local Module Imports
-import image_processing
-import nanoparticles_counting
+    # Local Module Imports
+    import image_processing
+    import nanoparticles_counting
+except ImportError as e:
+    raise ImportError(f"Required modules are missing. {e}")
+
 
 # Load the configuration file
 with open('config.json', 'r') as config_file:
@@ -36,8 +40,11 @@ CLAHE_TILE_GRID_SIZE = config['CLAHE_TILE_GRID_SIZE']
 ADAPTIVE_THRESHOLDING_BLOCK_SIZE = config['ADAPTIVE_THRESHOLDING_BLOCK_SIZE']
 ADAPTIVE_THRESHOLDING_CONSTANT = config['ADAPTIVE_THRESHOLDING_CONSTANT']
 ROI_RADIUS = config['ROI_RADIUS']
+EXCEL_FILE_NAME = config['EXCEL_FILE_NAME']
+ALLOWED_IMAGE_EXTENSIONS = config['ALLOWED_IMAGE_EXTENSIONS']
 
 
+# Helper Functions
 def load_grayscale_images(directory_path: str) -> Tuple[List[np.ndarray], List[str]]:
     """
     Load images from the specified directory and convert them to grayscale.
@@ -57,7 +64,7 @@ def load_grayscale_images(directory_path: str) -> Tuple[List[np.ndarray], List[s
     if not os.path.exists(directory_path):
         raise FileNotFoundError(f"The specified directory does not exist: {directory_path}")
 
-    image_filenames = [filename for filename in os.listdir(directory_path) if filename.endswith(('.png', '.JPG', '.jpeg'))]
+    image_filenames = [filename for filename in os.listdir(directory_path) if filename.endswith(ALLOWED_IMAGE_EXTENSIONS)]
     if not image_filenames:
         raise ValueError("No images found in the specified directory.")
 
@@ -72,7 +79,7 @@ def load_grayscale_images(directory_path: str) -> Tuple[List[np.ndarray], List[s
 
 def save_results_to_excel(data: List[Tuple[str, int]], output_folder: str) -> None:
     df_counts = pd.DataFrame(data, columns=['Filename', 'White Pixel Count'])
-    excel_file_path = os.path.join(output_folder, 'white_pixel_counts.xlsx')
+    excel_file_path = os.path.join(output_folder, EXCEL_FILE_NAME)
     try:
         df_counts.to_excel(excel_file_path, index=False)
     except Exception as e:
