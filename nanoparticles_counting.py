@@ -46,7 +46,7 @@ def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[s
                                                 cv2.THRESH_BINARY_INV, block_size, constant)
 
         # Save the thresholded image
-        segmented_filename = f"segmented_{filenames[i]}"
+        segmented_filename = f"segmented_{filenames[i].split('.')[0]}_b{block_size}_c{constant}.png"
         cv2.imwrite(os.path.join(output_folder, segmented_filename), adaptive_thresh)
 
         segmented_images.append(adaptive_thresh)

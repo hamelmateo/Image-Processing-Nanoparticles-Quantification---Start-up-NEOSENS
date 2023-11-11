@@ -37,11 +37,11 @@ TEMPORAL_AVERAGE_WINDOW_SIZE = config['TEMPORAL_AVERAGE_WINDOW_SIZE']
 MEDIAN_FILTER_KERNEL_SIZE = config['MEDIAN_FILTER_KERNEL_SIZE']
 CLAHE_CLIP_LIMIT = config['CLAHE_CLIP_LIMIT']
 CLAHE_TILE_GRID_SIZE = config['CLAHE_TILE_GRID_SIZE']
-ADAPTIVE_THRESHOLDING_BLOCK_SIZE = config['ADAPTIVE_THRESHOLDING_BLOCK_SIZE']
-ADAPTIVE_THRESHOLDING_CONSTANT = config['ADAPTIVE_THRESHOLDING_CONSTANT']
+ADAPTIVE_THRESHOLDING_BLOCK_SIZE = config['ADAPTIVE_THRESHOLDING_BLOCK_SIZE'] # Found empirically
+ADAPTIVE_THRESHOLDING_CONSTANT = config['ADAPTIVE_THRESHOLDING_CONSTANT'] # Found empirically
 ROI_RADIUS = config['ROI_RADIUS']
 EXCEL_FILE_NAME = config['EXCEL_FILE_NAME']
-ALLOWED_IMAGE_EXTENSIONS = config['ALLOWED_IMAGE_EXTENSIONS']
+ALLOWED_IMAGE_EXTENSIONS = tuple(config['ALLOWED_IMAGE_EXTENSIONS'])
 
 
 # Helper Functions
@@ -84,6 +84,57 @@ def save_results_to_excel(data: List[Tuple[str, int]], output_folder: str) -> No
         df_counts.to_excel(excel_file_path, index=False)
     except Exception as e:
         print(f"Failed to save to Excel: {e}")
+
+
+def fine_tuning_adaptive_threshold(raw_images: List[np.ndarray], filenames: List[str], segmented_dir: str, masks: List[np.ndarray],
+                                   roi_radius: int, results_dir: str) -> pd.DataFrame:
+    """
+    Fine-tunes adaptive thresholding parameters for a set of images, applies the ROI masks, and counts white pixels.
+
+    Args:
+        raw_images (List[np.ndarray]): A list of grayscale images to be thresholded.
+        filenames (List[str]): A list of filenames corresponding to each image in raw_images.
+        segmented_dir (str): Directory where segmented images will be saved.
+        masks (List[np.ndarray]): A list of ROI masks to apply to each image.
+        roi_radius (int): The radius of the ROI used to create the masks.
+        results_dir (str): Directory where the results Excel file will be saved.
+
+    Returns:
+        pd.DataFrame: A Pandas DataFrame containing the white pixel counts for each combination
+                    of block size and constant used in adaptive thresholding, for each image.
+    """
+    # Dictionary to hold the counts for different block sizes and constants
+    results = {}
+
+    block_sizes = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]  # Example values for block size
+    constants = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]  # Example values for constant
+
+    for block_size in block_sizes:
+        for constant in constants:
+            # Segment images with current block size and constant
+            segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(
+                raw_images, filenames, segmented_dir, block_size, constant
+            )
+
+            # Apply masking and count white pixels
+            white_pixel_counts = [
+                nanoparticles_counting.count_white_pixels(cv2.bitwise_and(seg_image, seg_image, mask=mask))
+                for seg_image, mask in zip(segmented_images, masks)
+            ]
+
+            # Store the results
+            results[f'b{block_size}_c{constant}'] = white_pixel_counts
+
+    # Convert the results to a DataFrame
+    df_counts = pd.DataFrame(results)
+    df_counts.insert(0, 'Filename', filenames)
+
+    # Save to Excel file
+    excel_file_path = os.path.join(results_dir, 'white_pixel_counts_comparison.xlsx')
+    df_counts.to_excel(excel_file_path, index=False)
+    print(f"White pixel counts comparison has been written to {excel_file_path}")
+
+    return df_counts
 
 
 def main() -> None:
