@@ -152,35 +152,35 @@ def get_circle_roi(image: np.ndarray, roi_radius: int) -> np.ndarray:
     return mask
 
 
-def apply_masking(segm_images: List[np.ndarray], masks: List[np.ndarray], filenames: List[str], output_folder: str) -> List[Tuple[np.ndarray, str]]:
+def apply_masking(images: List[np.ndarray], masks: List[np.ndarray], filenames: List[str], output_folder: str) -> List[Tuple[np.ndarray, str]]:
     """
-    Apply pre-defined masks to a list of segmented images.
+    Apply pre-defined masks to a list of images.
 
     Args:
-        segm_images (List[np.ndarray]): List of segmented images to apply the mask to.
+        images (List[np.ndarray]): List of images to apply the mask to.
         masks (List[np.ndarray]): List of masks for each image.
         filenames (List[str]): List of filenames corresponding to each image.
         output_folder (str): Directory where masked images will be saved.
 
     Returns:
-        List[Tuple[np.ndarray, str]]: List of tuples, each containing a masked image and its filename.
+        List[np.ndarray]: List of masked images.
     """
-    if not segm_images or not masks:
+    if not images or not masks:
         raise ValueError("The lists of segmented images or masks are empty.")
-    if len(segm_images) != len(masks) or len(masks) != len(filenames):
+    if len(images) != len(masks) or len(masks) != len(filenames):
         raise ValueError("All lists must have the same number of elements.")
 
     masked_imgs = []
-    for i, seg_image in enumerate(segm_images):
+    for i, image in enumerate(images):
         # Apply the pre-defined mask to the segmented image
-        masked_img = cv2.bitwise_and(seg_image, seg_image, mask=masks[i])
+        masked_img = cv2.bitwise_and(image, image, mask=masks[i])
 
         # Save the final masked image
         masked_filename = f"masked_{filenames[i]}"
         cv2.imwrite(os.path.join(output_folder, masked_filename), masked_img)
 
         # Append the masked image and filename to the list
-        masked_imgs.append((masked_img, masked_filename))
+        masked_imgs.append(masked_img)
 
     return masked_imgs
 
