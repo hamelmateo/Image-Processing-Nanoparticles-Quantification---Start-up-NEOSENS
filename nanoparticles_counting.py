@@ -13,19 +13,22 @@ except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
 
-def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[str], output_folder: str, block_size: int, constant: int) -> List[np.ndarray]:
+def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[str], output_folder: str, config: dict) -> List[np.ndarray]:
     """
-    Apply adaptive thresholding and save the result.
+    Applies thresholding segmentation to a list of images based on the method specified in the configuration. 
+    Supports 'adaptive', 'otsu', 'fixed', and 'all' methods. When 'all' is chosen, it applies all three 
+    methods and saves separate results for each.
 
     Args:
         images (List[np.ndarray]): List of images to segment.
         filenames (List[str]): List of filenames corresponding to each image.
         output_folder (str): Folder to save the output images.
-        block_size (int): The size of the neighbourhood area used for threshold calculation.
-        constant (int): A constant value subtracted from mean or weighted sum of the neighbourhood pixels.
+        config (dict): Configuration dictionary containing parameters for the thresholding methods. 
+                       It should include 'THRESHOLDING_METHOD' key and other related configuration.
 
     Returns:
-        List[np.ndarray]: List of segmented images.    
+        List[np.ndarray]: List of segmented images. If 'all' methods are applied, returns a concatenated list of 
+                          images processed by each method. 
     """
     if not images:
         raise ValueError("The list of images is empty.")
@@ -34,24 +37,81 @@ def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[s
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
+    # Extract thresholding configurations from config
+    threshold_method = config['THRESHOLDING_METHOD']
+    otsu_max_value = config.get('OTSU_THRESHOLDING', {}).get('max_value', 255)
+    adaptive_block_size = config.get('ADAPTIVE_THRESHOLDING', {}).get('block_size', 11)
+    adaptive_constant = config.get('ADAPTIVE_THRESHOLDING', {}).get('constant', 2)
+    threshold_value = config.get('FIXED_THRESHOLDING', {}).get('threshold_value', 127)
+    fixed_max_value = config.get('FIXED_THRESHOLDING', {}).get('max_value', 255)
 
+    def save_and_append(segm_img, method):
+        segmented_filename = f"segmented_{filenames[i].split('.')[0]}_{method}.png"
+        cv2.imwrite(os.path.join(output_folder, segmented_filename), segm_img)
+        segmented_images.append(segm_img)
+    
     segmented_images = []
 
     for i, img in enumerate(images):
         # Ensure the image is in grayscale
-        gray = img if len(img.shape) == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray_img = img if len(img.shape) == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # Apply adaptive thresholding
-        adaptive_thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                                cv2.THRESH_BINARY_INV, block_size, constant)
-
-        # Save the thresholded image
-        segmented_filename = f"segmented_{filenames[i].split('.')[0]}_b{block_size}_c{constant}.png"
-        cv2.imwrite(os.path.join(output_folder, segmented_filename), adaptive_thresh)
-
-        segmented_images.append(adaptive_thresh)
-
+        # Apply the selected thresholding technique
+        if threshold_method.lower() == "adaptive":
+            segm_adaptive = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, adaptive_block_size, adaptive_constant) # BINARY_INV to have dark spot labeled as 1
+            save_and_append(segm_adaptive, "adaptive")
+        elif threshold_method.lower() == "otsu":
+            _, segm_otsu = cv2.threshold(gray_img, 0, otsu_max_value, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            save_and_append(segm_otsu, "otsu")
+        elif threshold_method.lower() == "fixed":
+            _, segm_fixed = cv2.threshold(gray_img, threshold_value, fixed_max_value, cv2.THRESH_BINARY_INV) # BINARY_INV to have dark spot labeled as 1
+            save_and_append(segm_fixed, "fixed")
+        else:
+            raise ValueError("Invalid thresholding method specified in config.")
+        
     return segmented_images
+
+
+def load_or_create_masks(filenames: List[str], masks_directory_path: str, img_directory_path: str, roi_radius:int) -> List[np.ndarray]:
+    """
+    Loads or creates masks for a list of images.
+
+    Args:
+        filenames (List[str]): List of filenames corresponding to each image.
+        masks_directory_path (str): Directory where masks are stored or will be saved.
+        img_directory_path (str): Directory where the original images are located.
+        roi_radius (int): The radius of the circular ROI to apply.
+
+    Returns:
+        List[np.ndarray]: List of masks for each image.
+    """
+    if not filenames:
+        raise ValueError("The list of filenames is empty.")
+    if not os.path.exists(img_directory_path):
+        raise FileNotFoundError(f"The specified image directory does not exist: {img_directory_path}")
+    if not os.path.exists(masks_directory_path):
+        os.makedirs(masks_directory_path)
+    
+    masks = []
+
+    for filename in filenames:
+        mask_path = os.path.join(masks_directory_path, f"mask_{filename}")
+        if os.path.exists(mask_path):
+            # Load the existing mask
+            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        else:
+            # Create a new mask and save it
+            image_path = os.path.join(img_directory_path, filename)
+            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            mask = get_circle_roi(image, roi_radius)
+            cv2.imwrite(mask_path, mask)
+
+            # Save the new mask in the masks directory
+            cv2.imwrite(mask_path, mask)
+            
+        masks.append(mask)
+
+    return masks
 
 
 def get_circle_roi(image: np.ndarray, roi_radius: int) -> np.ndarray:
@@ -92,40 +152,36 @@ def get_circle_roi(image: np.ndarray, roi_radius: int) -> np.ndarray:
     return mask
 
 
-def apply_masking_roi(segm_images: List[np.ndarray], images: List[np.ndarray], filenames: List[str], output_folder: str, roi_radius:int) -> List[Tuple[np.ndarray, str]]:
+def apply_masking(segm_images: List[np.ndarray], masks: List[np.ndarray], filenames: List[str], output_folder: str) -> List[Tuple[np.ndarray, str]]:
     """
-    Apply a circular ROI mask to a list of images.
+    Apply pre-defined masks to a list of segmented images.
 
     Args:
         segm_images (List[np.ndarray]): List of segmented images to apply the mask to.
-        images (List[np.ndarray]): Original list of images to define the ROI.
+        masks (List[np.ndarray]): List of masks for each image.
         filenames (List[str]): List of filenames corresponding to each image.
         output_folder (str): Directory where masked images will be saved.
-        roi_radius (int): The radius of the ROI to be applied.
 
     Returns:
         List[Tuple[np.ndarray, str]]: List of tuples, each containing a masked image and its filename.
     """
-    if not segm_images or not images:
-        raise ValueError("The lists of segmented or original images are empty.")
-    if len(segm_images) != len(images) or len(images) != len(filenames):
+    if not segm_images or not masks:
+        raise ValueError("The lists of segmented images or masks are empty.")
+    if len(segm_images) != len(masks) or len(masks) != len(filenames):
         raise ValueError("All lists must have the same number of elements.")
-    
+
     masked_imgs = []
-    for i, img in enumerate(images):
-        # Use the image to define the ROI
-        mask = get_circle_roi(img, roi_radius)
-        
-        # Apply the mask to the image
-        masked_img = cv2.bitwise_and(segm_images[i], segm_images[i], mask=mask)
-        
-        # Save the final segmented image
+    for i, seg_image in enumerate(segm_images):
+        # Apply the pre-defined mask to the segmented image
+        masked_img = cv2.bitwise_and(seg_image, seg_image, mask=masks[i])
+
+        # Save the final masked image
         masked_filename = f"masked_{filenames[i]}"
         cv2.imwrite(os.path.join(output_folder, masked_filename), masked_img)
 
         # Append the masked image and filename to the list
         masked_imgs.append((masked_img, masked_filename))
-    
+
     return masked_imgs
 
 

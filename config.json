@@ -1,4 +1,5 @@
 {
+"MASKS_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\00_masks",
 "RAW_IMAGES_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\01_images_raw",
 "PROCESSED_IMAGES_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\02_images_processed",
 "MASKED_IMAGES_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\03_images_masked",
@@ -8,8 +9,18 @@
 "MEDIAN_FILTER_KERNEL_SIZE": 5,
 "CLAHE_CLIP_LIMIT": 2.0,
 "CLAHE_TILE_GRID_SIZE": [8, 8],
-"ADAPTIVE_THRESHOLDING_BLOCK_SIZE": 3,
-"ADAPTIVE_THRESHOLDING_CONSTANT": 15,
+"THRESHOLDING_METHOD": "adaptive",
+"OTSU_THRESHOLDING": {
+    "max_value": 255
+},
+"ADAPTIVE_THRESHOLDING": {
+    "block_size": 3,
+    "constant": 15
+},
+"FIXED_THRESHOLDING": {
+    "threshold_value": 135,
+    "max_value": 255
+},
 "ROI_RADIUS": 85,
 "EXCEL_FILE_NAME": "white_pixel_counts.xlsx",
 "ALLOWED_IMAGE_EXTENSIONS": [".png", ".jpg", ".jpeg"]

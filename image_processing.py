@@ -5,6 +5,7 @@ Created on Thu Sep 19 10:35:22 2023
 """
 
 try:
+    import os
     import cv2
     import numpy as np
     from typing import List, Tuple
@@ -95,8 +96,8 @@ def apply_clahe(images: List[np.ndarray], clip_limit: float, tile_grid_size: Tup
     return proc_imgs
 
 
-def process_images(images: List[np.ndarray], temporal_average_window_size: int, median_kernel_size: int,
-                   clip_limit: float, tile_grid_size: Tuple[int, int]) -> List[np.ndarray]:
+def process_images(images: List[np.ndarray], filenames: List[str], temporal_average_window_size: int, median_kernel_size: int,
+                   clip_limit: float, tile_grid_size: Tuple[int, int], output_folder: str) -> List[np.ndarray]:
     """
     Process a list of images for further analysis.
     
@@ -106,6 +107,7 @@ def process_images(images: List[np.ndarray], temporal_average_window_size: int, 
         median_kernel_size (int): Size of the kernel used for median filtering.
         clip_limit (float): Threshold for contrast limiting in CLAHE.
         tile_grid_size (Tuple[int, int]): Size of the grid for histogram equalization in CLAHE.
+        output folder (str): Folder to save the output images.
 
     Returns:
         List[np.ndarray]: List of processed images.
@@ -114,18 +116,23 @@ def process_images(images: List[np.ndarray], temporal_average_window_size: int, 
         raise ValueError("The list of images is empty.")
     
     # Remove noise
-    averaged_imgs = compute_temporal_average(images, temporal_average_window_size)
-    cv2.imshow("Averaged Image", cv2.resize(averaged_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
+    #averaged_imgs = compute_temporal_average(images, temporal_average_window_size)
+    #cv2.imshow("Averaged Image", cv2.resize(averaged_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
 
     filtered_imgs = apply_median_filter(images, median_kernel_size)
-    cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
+    #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     
     # Increase sharpness
     # TODO
 
     # Increase contrast
     proc_imgs = apply_clahe(filtered_imgs, clip_limit, tile_grid_size)
-    cv2.imshow("CLAHE Image", cv2.resize(proc_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
-    cv2.waitKey(0)  # Wait indefinitely until a key is pressed
-    
+    #cv2.imshow("CLAHE Image", cv2.resize(proc_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
+    #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
+
+    # Save the final segmented image
+    for i, img in enumerate(proc_imgs):
+        processed_filename = f"processed_{filenames[i]}"
+        cv2.imwrite(os.path.join(output_folder, processed_filename), img)
+        
     return proc_imgs
