@@ -159,7 +159,7 @@ def main() -> None:
         
         # Methods implementation (adaptive, fixed & otsu):
         # Segment images
-        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(processed_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
+        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
         print('Segmentation done')
 
         # Apply masks

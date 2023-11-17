@@ -44,6 +44,8 @@ def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[s
     adaptive_constant = config.get('ADAPTIVE_THRESHOLDING', {}).get('constant', 2)
     threshold_value = config.get('FIXED_THRESHOLDING', {}).get('threshold_value', 127)
     fixed_max_value = config.get('FIXED_THRESHOLDING', {}).get('max_value', 255)
+    if threshold_method.lower() == "median":
+        median_threshold = calculate_median_threshold(images[0:3])
 
     def save_and_append(segm_img, method):
         segmented_filename = f"segmented_{filenames[i].split('.')[0]}_{method}.png"
@@ -52,25 +54,46 @@ def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[s
     
     segmented_images = []
 
+
     for i, img in enumerate(images):
-        # Ensure the image is in grayscale
-        gray_img = img if len(img.shape) == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Apply the selected thresholding technique
         if threshold_method.lower() == "adaptive":
-            segm_adaptive = cv2.adaptiveThreshold(gray_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, adaptive_block_size, adaptive_constant) # BINARY_INV to have dark spot labeled as 1
+            segm_adaptive = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, adaptive_block_size, adaptive_constant) # BINARY_INV to have dark spot labeled as 1
             save_and_append(segm_adaptive, "adaptive")
         elif threshold_method.lower() == "otsu":
-            _, segm_otsu = cv2.threshold(gray_img, 0, otsu_max_value, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            _, segm_otsu = cv2.threshold(img, 0, otsu_max_value, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
             save_and_append(segm_otsu, "otsu")
         elif threshold_method.lower() == "fixed":
-            _, segm_fixed = cv2.threshold(gray_img, threshold_value, fixed_max_value, cv2.THRESH_BINARY_INV) # BINARY_INV to have dark spot labeled as 1
+            _, segm_fixed = cv2.threshold(img, threshold_value, fixed_max_value, cv2.THRESH_BINARY_INV) # BINARY_INV to have dark spot labeled as 1
             save_and_append(segm_fixed, "fixed")
+        elif threshold_method.lower() == "median":
+            _, segm_median = cv2.threshold(img, median_threshold, fixed_max_value, cv2.THRESH_BINARY_INV) # BINARY_INV to have dark spot labeled as 1
+            save_and_append(segm_median, "median")
         else:
             raise ValueError("Invalid thresholding method specified in config.")
         
     return segmented_images
 
+def calculate_median_threshold(images: List[np.ndarray]) -> int:
+    """
+    Calculate the median threshold value from images.
+
+    Args:
+        images (List[np.ndarray]): List of images.
+
+    Returns:
+        int: Median threshold value.
+    """
+    if not images:
+        raise ValueError("The list of images is empty.")
+
+    medians = []
+    for img in images:
+        median = np.median(img.flatten())
+        medians.append(median)
+
+    return int(sum(medians) / len(medians))
 
 def load_or_create_masks(filenames: List[str], masks_directory_path: str, img_directory_path: str, roi_radius:int) -> List[np.ndarray]:
     """
