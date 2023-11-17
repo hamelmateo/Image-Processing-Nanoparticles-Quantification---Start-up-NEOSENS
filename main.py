@@ -77,7 +77,6 @@ def load_grayscale_images(directory_path: str) -> Tuple[List[np.ndarray], List[s
     return grayscale_images, image_filenames
 
 
-
 def save_results_to_excel(data: List[Tuple[str, int]], output_folder: str) -> None:
     df_counts = pd.DataFrame(data, columns=['Filename', 'White Pixel Count'])
     excel_file_path = os.path.join(output_folder, EXCEL_FILE_NAME)
@@ -100,11 +99,13 @@ def main() -> None:
         raw_images, filenames = load_grayscale_images(RAW_IMAGES_DIRECTORY)
         end_time = time.time()
         print(f"Execution time for loading images: {end_time - start_time:.4f} seconds")
-
+        
+        """
         # Process images
-        #processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, 
-        #                                                   CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
-        #print('Processing done')
+        processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, 
+                                                           CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
+        print('Processing done')
+        """
 
         # Load or create masks
         masks = nanoparticles_counting.load_or_create_masks(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
@@ -159,7 +160,7 @@ def main() -> None:
         
         # Methods implementation (adaptive, fixed & otsu):
         # Segment images
-        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
+        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(processed_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
         print('Segmentation done')
 
         # Apply masks
