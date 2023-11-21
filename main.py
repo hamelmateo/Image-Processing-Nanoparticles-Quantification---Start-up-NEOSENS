@@ -100,8 +100,8 @@ def main() -> None:
         end_time = time.time()
         print(f"Execution time for loading images: {end_time - start_time:.4f} seconds")
         
-        """
         # Process images
+        """
         processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, 
                                                            CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
         print('Processing done')
@@ -111,8 +111,8 @@ def main() -> None:
         masks = nanoparticles_counting.load_or_create_masks(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
         print('Masks loaded/created')
 
-        """
         # To finetune Methods' parameters
+        """
         # Dictionary to hold the counts for different parameters
         results = {}
         
@@ -156,7 +156,6 @@ def main() -> None:
         df_counts.to_excel(excel_file_path, index=False)
         print(f"White pixel counts comparison has been written to {excel_file_path}")
         """
-
         
         # Methods implementation (adaptive, fixed & otsu):
         # Segment images

@@ -95,6 +95,7 @@ def calculate_median_threshold(images: List[np.ndarray]) -> int:
 
     return int(sum(medians) / len(medians))
 
+
 def load_or_create_masks(filenames: List[str], masks_directory_path: str, img_directory_path: str, roi_radius:int) -> List[np.ndarray]:
     """
     Loads or creates masks for a list of images.
