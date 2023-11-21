@@ -96,7 +96,7 @@ def test_clahe_parameters_on_list(images, clip_limits, tile_grid_sizes):
     return processed_images_list
 
 
-def apply_kspace_filtering(images):
+def apply_kspace_filtering(images, cutoff_freq):
     def to_frequency_domain(image):
         f_transform = np.fft.fft2(image)
         f_shift = np.fft.fftshift(f_transform)
@@ -122,14 +122,14 @@ def apply_kspace_filtering(images):
         f_shift = to_frequency_domain(img)
 
         # Apply a low-pass filter
-        filtered_k_space = apply_low_pass_filter(f_shift, cutoff_frequency=30)  # Example cutoff
+        filtered_k_space = apply_low_pass_filter(f_shift, cutoff_freq)  # Example cutoff
 
         # Convert back to spatial domain
         filtered_img = to_spatial_domain(filtered_k_space)
         filtered_images.append(filtered_img)
     
     return filtered_images
-    
+
 
 def calculate_metrics(proc_imgs, original_images):
 
@@ -195,13 +195,11 @@ def calculate_metrics(proc_imgs, original_images):
 
 
 
-
-
 # Load grayscale images
 images, filenames = load_grayscale_images(RAW_IMAGES_DIRECTORY)
 
-"""  
 # Principal thread
+"""  
 # Call image processing functions and save them after each process
 filtered_imgs = image_processing.apply_median_filter(images, MEDIAN_FILTER_KERNEL_SIZE)
 
@@ -226,8 +224,9 @@ cv2.waitKey(0)  # Wait indefinitely until a key is pressed
 cv2.destroyAllWindows()  # Destroy all the windows when a key is pressed
 """ 
 
-""" 
+
 # CLAHE parameter fine tuning
+""" 
 # Define ranges of parameters to test
 clip_limits = [2.0]  # Example values
 tile_grid_sizes = [(8, 8), (16, 16), (32, 32), (64, 64), (128, 128)]  # Extended range of values
@@ -243,17 +242,42 @@ for i, processed_images_dict in enumerate(proc_imgs):
         cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), processed_image)
 """ 
 
-# Apply K-space filtering
-proc_imgs = apply_kspace_filtering(images)
 
-# Save the contrasted image
-for i, img in enumerate(proc_imgs):
-    processed_filename = f"processed_{filenames[i]}"
-    cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+# K-space filtering & fine tuning
+"""
+cutoff_freqs = list(range(500, 1000, 10))  # Extended range of values
+
+# Apply K-space filtering
+for freq in cutoff_freqs:
+    proc_imgs = apply_kspace_filtering(images, freq)
+
+    # Save the filtered image
+    for i, img in enumerate(proc_imgs):
+        processed_filename = f"processed_freq_{freq}_{filenames[i]}"
+        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+"""
+
+
+# Median filter background substraction
+"""
+median_kernel_sizes = range(99, 441, 2)
+
+for kernel_size in median_kernel_sizes:
+    proc_imgs = image_processing.apply_median_filter(images, kernel_size)
+
+    # Save the filtered image
+    for i, img in enumerate(proc_imgs):
+        processed_filename = f"processed_kernel_{kernel_size}_{filenames[i]}"
+        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img - images[i])
+        processed_filename = f"median_{kernel_size}_{filenames[i]}"
+        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+"""
 
 
 # Calculate metric of images
+"""
 results_df = pd.DataFrame(calculate_metrics(proc_imgs, images))
 
 # Save the results to an Excel file
 results_df.to_excel(os.path.join(RESULTS_DIRECTORY, "Kspace_metrics_results.xlsx"), index=False)
+"""
