@@ -19,9 +19,9 @@ except ImportError as e:
 
 
 # Config variables
-VIDEO_DIRECTORY = "C:\Users\hamel\OneDrive - Neosens Diagnostics\04_Technology_Software\Image Processing\Pictures_Database_11-21-2023\live_acquisition_unfonctionnalized.mp4"
-RAW_IMAGES_DIRECTORY = "C:\Users\hamel\OneDrive - Neosens Diagnostics\04_Technology_Software\Image Processing\Pictures_Database_11-21-2023\Raw_images"
-AVERAGED_IMAGES_DIRECTORY = "C:\Users\hamel\OneDrive - Neosens Diagnostics\04_Technology_Software\Image Processing\Pictures_Database_11-21-2023\Averaged_Images"
+VIDEO_DIRECTORY = "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\Pictures_Database_11-21-2023\\live_acquisition_unfonctionnalized.mp4"
+RAW_IMAGES_DIRECTORY = "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\Pictures_Database_11-21-2023\\Raw_images"
+AVERAGED_IMAGES_DIRECTORY = "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\Pictures_Database_11-21-2023\\Averaged_Images"
 TEMPORAL_AVERAGE_WINDOW_SIZE = 50
 TEMPORAL_AVERAGE_BATCH_SIZE = 200
 
@@ -67,11 +67,12 @@ def video_raw_images(video_path: str, ouput_folder: str):
         minutes = int((frame_time % 3600) // 60)
         seconds = frame_time % 60
 
-        # Format the time in "mm-ss"
+        # Format the time in "mm-ss" & frame number
         time_str = f"{minutes:02d}-{seconds:.2f}"
+        frame_number_str = f"{i+1:05d}"
 
         # Save the frame with the timestamp in the filename
-        frame_path = os.path.join(ouput_folder, f"frame_{time_str}.jpg")
+        frame_path = os.path.join(ouput_folder, f"frame_{frame_number_str}_{time_str}.jpg")
         video.save_frame(frame_path, t=frame_time)
 
 
@@ -139,13 +140,17 @@ def process_video(video_path: str, raw_images_folder: str, averaged_images_folde
     """
 
     # Step 1: Extract raw images from the video
-    video_raw_images(video_path, raw_images_folder)
+    #video_raw_images(video_path, raw_images_folder)
+    #print(" Raw images extraction done")
 
     # Step 2: Load images in batches and compute temporal average
+    counter = 0
     for batch in load_images_in_batches(raw_images_folder, batch_size):
         averaged_images = compute_temporal_average(batch, window_size)
         for i, img in enumerate(averaged_images):
-            cv2.imwrite(os.path.join(averaged_images_folder, f"averaged_frame_{i+1}.jpg"), img)
+            counter += 1
+            cv2.imwrite(os.path.join(averaged_images_folder, f"averaged_frame_{counter}.jpg"), img)
+    print("Temporal averages done")
 
 
 def main():
@@ -156,7 +161,7 @@ def main():
     # Parameters
     video_path = VIDEO_DIRECTORY
     raw_images_folder = RAW_IMAGES_DIRECTORY
-    averaged_images_folder =    AVERAGED_IMAGES_DIRECTORY
+    averaged_images_folder = AVERAGED_IMAGES_DIRECTORY
     window_size = TEMPORAL_AVERAGE_WINDOW_SIZE
     batch_size = TEMPORAL_AVERAGE_BATCH_SIZE
 

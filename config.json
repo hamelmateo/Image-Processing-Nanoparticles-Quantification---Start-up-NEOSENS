@@ -5,7 +5,7 @@
 "MASKED_IMAGES_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\03_images_masked",
 "SEGMENTED_IMAGES_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\04_images_segmented",
 "RESULTS_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\05_Results",
-"TEMPORAL_AVERAGE_WINDOW_SIZE": 10,
+"TEMPORAL_AVERAGE_WINDOW_SIZE": 50,
 "MEDIAN_FILTER_KERNEL_SIZE": 5,
 "CLAHE_CLIP_LIMIT": 2.0,
 "CLAHE_TILE_GRID_SIZE": [8, 8],
