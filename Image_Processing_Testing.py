@@ -19,6 +19,7 @@ try:
     from skimage.metrics import structural_similarity as ssim
 
     # Local Module Imports
+    import image_metrics as im
     import image_processing
 except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
@@ -44,6 +45,7 @@ ROI_RADIUS = config['ROI_RADIUS']
 EXCEL_FILE_NAME = config['EXCEL_FILE_NAME']
 ALLOWED_IMAGE_EXTENSIONS = tuple(config['ALLOWED_IMAGE_EXTENSIONS'])
 
+BACKGROUND_IMAGE_DIRECTORY = "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\00_images_background"
 
 
 def load_grayscale_images(directory_path):
@@ -65,7 +67,7 @@ def load_grayscale_images(directory_path):
     if not os.path.exists(directory_path):
         raise FileNotFoundError(f"The specified directory does not exist: {directory_path}")
 
-    image_filenames = [filename for filename in os.listdir(directory_path) if filename.endswith(('.png', '.JPG', '.jpeg'))]
+    image_filenames = [filename for filename in os.listdir(directory_path) if filename.endswith(('.png', '.JPG', '.jpeg', '.jpg'))]
     if not image_filenames:
         raise ValueError("No images found in the specified directory.")
 
@@ -137,153 +139,147 @@ def apply_kspace_filtering(images, cutoff_freq):
     return filtered_images
 
 
-def calculate_metrics(proc_imgs, original_images):
+def calculate_metrics(proc_images: List[np.ndarray], raw_images: List[np.ndarray], bg_image: np.ndarray, filenames: List[str], proc_filenames: List[str]) -> pd.DataFrame:
+    """
+    Calculate metrics for a list of raw and processed images.
 
-    # Define the metric functions
-    def measure_contrast(image):
-        return np.std(image)
+    Args:
+        raw_imgs (List[np.ndarray]): List of raw images.
+        proc_imgs (List[np.ndarray]): List of processed images.
+        bg_image (np.ndarray): Image of the background.
+        filenames (List[str]): List of filenames corresponding to the raw images.
+        proc_filenames (List[str]): List of filenames corresponding to the processed images.
 
-    def measure_entropy(image):
-        return shannon_entropy(image)
+    Returns:
+        pd.DataFrame: A DataFrame containing the calculated metrics for each image.
+    """
+    metrics = []
+    for raw_image, filename in zip(raw_images, filenames):
+        # Metrics for raw images
+        raw_metrics = {
+            'Filename': filename,
+            'Image Type': 'Raw',
+            'SNR': im.calculate_snr(raw_image, bg_image),
+            'Contrast': im.calculate_contrast(raw_image),
+            'Entropy': shannon_entropy(raw_image),
+            'SSIM': 1.0  # SSIM with itself is 1
+        }
+        metrics.append(raw_metrics)
 
-    def measure_edge_density(image, threshold_ratio=0.1):
-        """
-        Measure the edge density of an image using Sobel operator.
-        Args:
-            image (np.ndarray): The input image.
-            threshold_ratio (float): Proportion of the maximum edge value to be used as threshold.
-        Returns:
-            float: The edge density of the image.
-        """
-        # Apply Sobel operator
-        edges = cv2.Sobel(image, cv2.CV_64F, 1, 1, ksize=5)
+    for proc_image, proc_filename in zip(proc_images, proc_filenames):
+        # Metrics for processed images
+        proc_metrics = {
+            'Filename': proc_filename,
+            'Image Type': 'Processed',
+            'SNR': im.calculate_snr(proc_image, bg_image),
+            'Contrast': im.calculate_contrast(proc_image),
+            'Entropy': shannon_entropy(proc_image),
+            'SSIM': ssim(raw_image, proc_image)
+        }
+        metrics.append(proc_metrics)
 
-        # Calculate threshold as a proportion of the maximum edge value
-        edge_threshold = threshold_ratio * np.max(edges)
+    return pd.DataFrame(metrics)
 
-        # Calculate edge density
-        edge_density = np.sum(edges > edge_threshold) / (image.shape[0] * image.shape[1])
-        return edge_density
 
-    def measure_ssim(original, processed):
-        # Ensure the images are the same size
-        if original.shape != processed.shape:
-            processed = cv2.resize(processed, (original.shape[1], original.shape[0]))
+
+def main():
+    """
+    Main function to process a database from the video.
+    """
+    # Load grayscale images
+    raw_images, filenames = load_grayscale_images(RAW_IMAGES_DIRECTORY)
+    bg_image,_ = load_grayscale_images(BACKGROUND_IMAGE_DIRECTORY)
+    
+    # Principal thread
+    """  
+    # Call image processing functions and save them after each process
+    filtered_imgs = image_processing.apply_median_filter(images, MEDIAN_FILTER_KERNEL_SIZE)
+
+    # Save the image
+    for i, img in enumerate(filtered_imgs):
+        processed_filename = f"filtered_{filenames[i]}"
+        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+
         
-        # Convert images to the same data type if necessary
-        if original.dtype != processed.dtype:
-            processed = processed.astype(original.dtype)
+    # Increase contrast
+    proc_imgs = image_processing.apply_clahe(images, CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE)
 
-        # Calculate SSIM
-        return ssim(original, processed)
-
-    # Initialize a list to store the results
-    results_data = []
-
-    # Loop through each processed image and calculate metrics
-    for i, processed_image in enumerate(proc_imgs):
-        original_image = original_images[i]
-        contrast = measure_contrast(processed_image)
-        entropy = measure_entropy(processed_image)
-        edge_density = measure_edge_density(processed_image)
-        ssim_value = measure_ssim(original_image, processed_image)
-
-        results_data.append({
-            "Filename": filenames[i],
-            "Contrast": contrast,
-            "Entropy": entropy,
-            "Edge Density": edge_density,
-            "SSIM": ssim_value
-        })
-    
-    return results_data
-
-
-
-
-# Load grayscale images
-images, filenames = load_grayscale_images(RAW_IMAGES_DIRECTORY)
-
-# Principal thread
-"""  
-# Call image processing functions and save them after each process
-filtered_imgs = image_processing.apply_median_filter(images, MEDIAN_FILTER_KERNEL_SIZE)
-
-# Save the image
-for i, img in enumerate(filtered_imgs):
-    processed_filename = f"filtered_{filenames[i]}"
-    cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
-
-     
-# Increase contrast
-proc_imgs = image_processing.apply_clahe(images, CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE)
-
-# Save the contrasted image
-for i, img in enumerate(proc_imgs):
-    processed_filename = f"processed_{filenames[i]}"
-    cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
-    
-cv2.imshow('Original Image', cv2.resize(images[5], (0, 0), fx=1, fy=1))
-#cv2.imshow('Filtered Image', cv2.resize(filtered_imgs[5], (0, 0), fx=1, fy=1))
-cv2.imshow('CLAHE Image', cv2.resize(proc_imgs[5], (0, 0), fx=1, fy=1))
-cv2.waitKey(0)  # Wait indefinitely until a key is pressed
-cv2.destroyAllWindows()  # Destroy all the windows when a key is pressed
-""" 
-
-
-# CLAHE parameter fine tuning
-""" 
-# Define ranges of parameters to test
-clip_limits = [2.0]  # Example values
-tile_grid_sizes = [(8, 8), (16, 16), (32, 32), (64, 64), (128, 128)]  # Extended range of values
-
-# Test CLAHE with different parameters
-proc_imgs = test_clahe_parameters_on_list(images, clip_limits, tile_grid_sizes)
-
-# Save each processed image with different CLAHE parameters
-for i, processed_images_dict in enumerate(proc_imgs):
-    for (clip_limit, tile_grid_size), processed_image in processed_images_dict.items():
-        # Construct a filename that includes the CLAHE parameters
-        processed_filename = f"processed_{filenames[i]}_clip_{clip_limit}_grid_{tile_grid_size[0]}x{tile_grid_size[1]}.png"
-        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), processed_image)
-""" 
-
-
-# K-space filtering & fine tuning
-"""
-cutoff_freqs = list(range(500, 1000, 10))  # Extended range of values
-
-# Apply K-space filtering
-for freq in cutoff_freqs:
-    proc_imgs = apply_kspace_filtering(images, freq)
-
-    # Save the filtered image
+    # Save the contrasted image
     for i, img in enumerate(proc_imgs):
-        processed_filename = f"processed_freq_{freq}_{filenames[i]}"
+        processed_filename = f"processed_{filenames[i]}"
         cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
-"""
+        
+    cv2.imshow('Original Image', cv2.resize(images[5], (0, 0), fx=1, fy=1))
+    #cv2.imshow('Filtered Image', cv2.resize(filtered_imgs[5], (0, 0), fx=1, fy=1))
+    cv2.imshow('CLAHE Image', cv2.resize(proc_imgs[5], (0, 0), fx=1, fy=1))
+    cv2.waitKey(0)  # Wait indefinitely until a key is pressed
+    cv2.destroyAllWindows()  # Destroy all the windows when a key is pressed
+    """ 
 
 
-# Median filter background substraction
-"""
-median_kernel_sizes = range(99, 441, 2)
+    # CLAHE parameter fine tuning
+    """ 
+    # Define ranges of parameters to test
+    clip_limits = [2.0]  # Example values
+    tile_grid_sizes = [(8, 8), (16, 16), (32, 32), (64, 64), (128, 128)]  # Extended range of values
 
-for kernel_size in median_kernel_sizes:
-    proc_imgs = image_processing.apply_median_filter(images, kernel_size)
+    # Test CLAHE with different parameters
+    proc_imgs = test_clahe_parameters_on_list(images, clip_limits, tile_grid_sizes)
 
-    # Save the filtered image
-    for i, img in enumerate(proc_imgs):
-        processed_filename = f"processed_kernel_{kernel_size}_{filenames[i]}"
-        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img - images[i])
-        processed_filename = f"median_{kernel_size}_{filenames[i]}"
-        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
-"""
+    # Save each processed image with different CLAHE parameters
+    for i, processed_images_dict in enumerate(proc_imgs):
+        for (clip_limit, tile_grid_size), processed_image in processed_images_dict.items():
+            # Construct a filename that includes the CLAHE parameters
+            processed_filename = f"processed_{filenames[i]}_clip_{clip_limit}_grid_{tile_grid_size[0]}x{tile_grid_size[1]}.png"
+            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), processed_image)
+    """ 
 
 
-# Calculate metric of images
-"""
-results_df = pd.DataFrame(calculate_metrics(proc_imgs, images))
+    # K-space filtering & fine tuning
+    """
+    cutoff_freqs = list(range(500, 1000, 10))  # Extended range of values
 
-# Save the results to an Excel file
-results_df.to_excel(os.path.join(RESULTS_DIRECTORY, "Kspace_metrics_results.xlsx"), index=False)
-"""
+    # Apply K-space filtering
+    for freq in cutoff_freqs:
+        proc_imgs = apply_kspace_filtering(images, freq)
+
+        # Save the filtered image
+        for i, img in enumerate(proc_imgs):
+            processed_filename = f"processed_freq_{freq}_{filenames[i]}"
+            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+    """
+
+
+    # Median filter background substraction
+    """"""
+    #TODO: to all raw_images, substract the bg image to it
+    
+    median_kernel_sizes = range(99, 441, 2)
+
+    for kernel_size in median_kernel_sizes:
+        proc_imgs = image_processing.apply_median_filter(raw_images, kernel_size)
+
+        # Save the filtered image
+        for i, img in enumerate(proc_imgs):
+            processed_filename = f"processed_kernel_{kernel_size}_{filenames[i]}"
+            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img - raw_images[i])
+            processed_filename = f"median_{kernel_size}_{filenames[i]}"
+            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+    
+
+
+
+    # Calculate metrics for the processed images
+    proc_images, proc_filenames = load_grayscale_images(PROCESSED_IMAGES_DIRECTORY)
+    results_df = calculate_metrics(proc_images, raw_images, bg_image, filenames, proc_filenames)
+
+    # Save the results to an Excel file
+    results_excel_path = os.path.join(RESULTS_DIRECTORY, "image_processing_metrics_results.xlsx")
+    results_df.to_excel(results_excel_path, index=False)
+
+    print(f"Metrics results saved to {results_excel_path}")
+
+
+
+if __name__ == "__main__":
+    main()
