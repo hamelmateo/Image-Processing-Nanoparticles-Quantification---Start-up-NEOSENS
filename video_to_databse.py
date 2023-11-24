@@ -149,7 +149,7 @@ def process_video(video_path: str, raw_images_folder: str, averaged_images_folde
         averaged_images = compute_temporal_average(batch, window_size)
         for i, img in enumerate(averaged_images):
             counter += 1
-            cv2.imwrite(os.path.join(averaged_images_folder, f"averaged_frame_{counter}.jpg"), img)
+            cv2.imwrite(os.path.join(averaged_images_folder, f"averaged_frame_{counter:03d}.jpg"), img)
     print("Temporal averages done")
 
 
