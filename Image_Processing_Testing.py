@@ -243,13 +243,13 @@ def main():
     cv2.destroyAllWindows()  # Destroy all the windows when a key is pressed
     """ 
 
+
     # Gaussian Filter parameter fine tuning
-    """"""
+    """
     # Define ranges of parameters to test
-    #kernel_sizes = [5, 11, 17, 23, 29]  # Example odd kernel sizes
-    #sigma_values = [0.5, 1, 1.5, 2, 2.5]  # Example sigma values
-    kernel_sizes = [29]  # Example odd kernel sizes
-    sigma_values = [2.5]  # Example sigma values
+    kernel_sizes = [5, 11, 17, 23, 29]  # Example odd kernel sizes
+    sigma_values = [0.5, 1, 1.5, 2, 2.5]  # Example sigma values
+
 
     # Test Gaussian filter with different parameters
     smooth_imgs = test_gaussian_filter_parameters_on_list(raw_images, kernel_sizes, sigma_values)
@@ -260,11 +260,11 @@ def main():
             processed_filename = f"gaussian_{filenames[i]}_kernel_{kernel_size:02d}_sigma_{sigma:.1f}.png"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), processed_image)
     print('Gaussian filter fine-tuning done')
-    
+    """
 
 
     # CLAHE parameter fine tuning
-    """""" 
+    """
     # Define ranges of parameters to test
     clip_limits = [2.0, 4.0, 8.0]  # Example values
     tile_grid_sizes = [(8, 8), (16, 16), (32, 32), (64, 64), (128, 128)]  # Trade off Contrast & SNR --> clip = 2.0, grid = 64x64
@@ -279,22 +279,22 @@ def main():
             processed_filename = f"processed_{filenames[i]}_clip_{clip_limit}_grid_{tile_grid_size[0]:03d}x{tile_grid_size[1]:03d}.png"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), processed_image)
     print('CLAHE done')
-    
+    """ 
 
 
     # K-space filtering & fine tuning
-    """
+    """"""
     cutoff_freqs = list(range(500, 1000, 10))  # Extended range of values
 
     # Apply K-space filtering
     for freq in cutoff_freqs:
-        proc_imgs = apply_kspace_filtering(images, freq)
+        proc_imgs = apply_kspace_filtering(raw_images, freq)
 
         # Save the filtered image
         for i, img in enumerate(proc_imgs):
             processed_filename = f"processed_freq_{freq}_{filenames[i]}"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
-    """
+    print('K-space filtering done')
 
 
     # Method from acssensors 0c01681 - Gradient-Based Rapid Digital Immunoassay for High-Sensitivity Cardiac Troponin T (hs-cTnT) Detection in 1 μL Plasma 
