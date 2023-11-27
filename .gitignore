@@ -1,5 +1,7 @@
 neosens-env/
+00_images_background/
 00_masks/
+00_masks_background/
 01_images_raw/
 02_images_processed/
 03_images_masked/

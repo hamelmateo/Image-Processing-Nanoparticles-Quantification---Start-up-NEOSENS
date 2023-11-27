@@ -17,14 +17,26 @@ except ImportError as e:
 
 
 # Define functions to calculate various metrics
-def calculate_snr(signal: np.ndarray, noise: np.ndarray) -> float:
+def calculate_snr(image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
     """
-    Calculate the Signal-to-Noise Ratio (SNR) of an image.
-    SNR = mean(signal) / std(noise)
+    Calculate the Signal-to-Noise Ratio (SNR) of an image using defined signal and background ROIs.
+    
+    Args:
+        image (np.ndarray): The image to analyze.
+        signal_mask (np.ndarray): Mask to isolate the signal region.
+        background_mask (np.ndarray): Mask to isolate the background region.
+    
+    Returns:
+        float: The calculated SNR.
     """
-    mean_signal = np.mean(signal)
-    std_noise = np.std(noise)
-    return mean_signal / std_noise
+    # Extract signal and background regions
+    signal_region = image[signal_mask == 255]
+    background_region = image[background_mask == 255]
+
+    # Calculate SNR
+    mean_signal = np.mean(signal_region)
+    std_noise = np.std(background_region)
+    return mean_signal / std_noise if std_noise != 0 else float('inf')
 
 
 def calculate_contrast(image: np.ndarray) -> float:

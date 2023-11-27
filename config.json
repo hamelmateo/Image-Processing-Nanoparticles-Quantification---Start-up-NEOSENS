@@ -1,15 +1,21 @@
 {
 "MASKS_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\00_masks",
+"MASKS_BG_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\00_masks_background",
 "RAW_IMAGES_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\01_images_raw",
 "PROCESSED_IMAGES_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\02_images_processed",
 "MASKED_IMAGES_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\03_images_masked",
 "SEGMENTED_IMAGES_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\04_images_segmented",
 "RESULTS_DIRECTORY": "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\05_Results",
+
+
 "TEMPORAL_AVERAGE_WINDOW_SIZE": 50,
 "MEDIAN_FILTER_KERNEL_SIZE": 5,
+"KSPACE_FILTER_CUTOFF_FREQ": 1000,
 "CLAHE_CLIP_LIMIT": 2.0,
 "CLAHE_TILE_GRID_SIZE": [8, 8],
-"THRESHOLDING_METHOD": "fixed",
+
+
+"THRESHOLDING_METHOD": "otsu",
 "OTSU_THRESHOLDING": {
     "max_value": 255
 },
@@ -22,6 +28,7 @@
     "max_value": 255
 },
 "ROI_RADIUS": 85,
+
 "EXCEL_FILE_NAME": "white_pixel_counts.xlsx",
 "ALLOWED_IMAGE_EXTENSIONS": [".png", ".jpg", ".jpeg"]
 }

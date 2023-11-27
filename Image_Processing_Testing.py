@@ -31,6 +31,7 @@ with open('config.json', 'r') as config_file:
 
 # Config variables
 MASKS_DIRECTORY = config['MASKS_DIRECTORY']
+MASKS_BG_DIRECTORY = config['MASKS_BG_DIRECTORY']
 RAW_IMAGES_DIRECTORY = config['RAW_IMAGES_DIRECTORY']
 PROCESSED_IMAGES_DIRECTORY = config['PROCESSED_IMAGES_DIRECTORY']
 MASKED_IMAGES_DIRECTORY = config['MASKED_IMAGES_DIRECTORY']
@@ -180,30 +181,41 @@ def calculate_metrics(proc_images: List[np.ndarray], raw_images: List[np.ndarray
     Returns:
         pd.DataFrame: A DataFrame containing the calculated metrics for each image.
     """
+    def load_masks(filenames, directory):
+        return [cv2.imread(os.path.join(directory, f'mask_{filename}'), cv2.IMREAD_GRAYSCALE) for filename in filenames]
+    
+
+    signal_masks = load_masks(filenames, MASKS_DIRECTORY)
+    bg_masks = load_masks(filenames, MASKS_BG_DIRECTORY)
+
     metrics = []
-    for raw_image, filename in zip(raw_images, filenames):
+    for raw_image, filename, signal_mask, bg_mask in zip(raw_images, filenames, signal_masks, bg_masks):
         # Metrics for raw images
         raw_metrics = {
             'Filename': filename,
             'Image Type': 'Raw',
-            'SNR': im.calculate_snr(raw_image, bg_image),
+            'SNR': im.calculate_snr(raw_image, signal_mask, bg_mask),
             'Contrast': im.calculate_contrast(raw_image),
             'Entropy': shannon_entropy(raw_image),
             'SSIM': 1.0  # SSIM with itself is 1
         }
         metrics.append(raw_metrics)
 
-    for proc_image, proc_filename in zip(proc_images, proc_filenames):
-        # Metrics for processed images
-        proc_metrics = {
-            'Filename': proc_filename,
-            'Image Type': 'Processed',
-            'SNR': im.calculate_snr(proc_image, bg_image),
-            'Contrast': im.calculate_contrast(proc_image),
-            'Entropy': shannon_entropy(proc_image),
-            'SSIM': ssim(raw_image, proc_image)
-        }
-        metrics.append(proc_metrics)
+    batch_size = 46
+    for i in range(0, len(proc_images), batch_size):
+        batch_proc_images = proc_images[i:i + batch_size]
+        batch_proc_filenames = proc_filenames[i:i + batch_size]
+        for proc_image, proc_filename, signal_mask, bg_mask in zip(batch_proc_images, batch_proc_filenames, signal_masks, bg_masks):
+            # Metrics for processed images
+            proc_metrics = {
+                'Filename': proc_filename,
+                'Image Type': 'Processed',
+                'SNR': im.calculate_snr(proc_image, signal_mask, bg_mask),
+                'Contrast': im.calculate_contrast(proc_image),
+                'Entropy': shannon_entropy(proc_image),
+                'SSIM': ssim(raw_image, proc_image)
+            }
+            metrics.append(proc_metrics)
 
     return pd.DataFrame(metrics)
 
@@ -284,7 +296,7 @@ def main():
 
     # K-space filtering & fine tuning
     """"""
-    cutoff_freqs = list(range(500, 1000, 10))  # Extended range of values
+    cutoff_freqs = list(range(700, 900, 10))  # Extended range of values
 
     # Apply K-space filtering
     for freq in cutoff_freqs:
@@ -295,7 +307,7 @@ def main():
             processed_filename = f"processed_freq_{freq}_{filenames[i]}"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
     print('K-space filtering done')
-
+    
 
     # Method from acssensors 0c01681 - Gradient-Based Rapid Digital Immunoassay for High-Sensitivity Cardiac Troponin T (hs-cTnT) Detection in 1 μL Plasma 
     # Subtract the background from each raw image
@@ -328,7 +340,6 @@ def main():
 
     # Differential imaging
     #TODO later
-
 
     # Calculate metrics for the processed images
     proc_images, proc_filenames = load_grayscale_images(PROCESSED_IMAGES_DIRECTORY)

@@ -15,10 +15,13 @@ try:
     import cv2
     import numpy as np
     import pandas as pd
+    from skimage.measure import shannon_entropy
+    from skimage.metrics import structural_similarity as ssim
 
     # Local Module Imports
     import image_processing
     import nanoparticles_counting
+    import image_metrics
 except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
@@ -29,15 +32,20 @@ with open('config.json', 'r') as config_file:
 
 # Config variables
 MASKS_DIRECTORY = config['MASKS_DIRECTORY']
+MASKS_BG_DIRECTORY = config['MASKS_BG_DIRECTORY']
 RAW_IMAGES_DIRECTORY = config['RAW_IMAGES_DIRECTORY']
 PROCESSED_IMAGES_DIRECTORY = config['PROCESSED_IMAGES_DIRECTORY']
 MASKED_IMAGES_DIRECTORY = config['MASKED_IMAGES_DIRECTORY']
 SEGMENTED_IMAGES_DIRECTORY = config['SEGMENTED_IMAGES_DIRECTORY']
 RESULTS_DIRECTORY = config['RESULTS_DIRECTORY']
+
+
 TEMPORAL_AVERAGE_WINDOW_SIZE = config['TEMPORAL_AVERAGE_WINDOW_SIZE']
 MEDIAN_FILTER_KERNEL_SIZE = config['MEDIAN_FILTER_KERNEL_SIZE']
+KSPACE_FILTER_CUTOFF_FREQ = config['KSPACE_FILTER_CUTOFF_FREQ']
 CLAHE_CLIP_LIMIT = config['CLAHE_CLIP_LIMIT']
 CLAHE_TILE_GRID_SIZE = config['CLAHE_TILE_GRID_SIZE']
+
 
 ROI_RADIUS = config['ROI_RADIUS']
 EXCEL_FILE_NAME = config['EXCEL_FILE_NAME']
@@ -86,6 +94,7 @@ def save_results_to_excel(data: List[Tuple[str, int]], output_folder: str) -> No
         print(f"Failed to save to Excel: {e}")
 
 
+
 def main() -> None:
     """
     Main execution function.
@@ -100,14 +109,18 @@ def main() -> None:
         end_time = time.time()
         print(f"Execution time for loading images: {end_time - start_time:.4f} seconds")
         
+        # 1. Raw images pre-processing
         # Process images
         """
-        processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, 
+        processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, KSPACE_FILTER_CUTOFF_FREQ
                                                            CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
         print('Processing done')
         """
 
-        # Load or create masks
+
+
+        # 2. Nanoparticle identification & quantification
+        # Load or create signal masks
         masks = nanoparticles_counting.load_or_create_masks(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
         print('Masks loaded/created')
 

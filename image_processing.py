@@ -13,6 +13,40 @@ except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
 
+def apply_kspace_filtering(images, cutoff_freq):
+    def to_frequency_domain(image):
+        f_transform = np.fft.fft2(image)
+        f_shift = np.fft.fftshift(f_transform)
+        return f_shift
+
+    def apply_low_pass_filter(k_space, cutoff_frequency):
+        rows, cols = k_space.shape
+        crow, ccol = rows // 2, cols // 2
+        mask = np.zeros((rows, cols), np.uint8)
+        mask[crow-cutoff_frequency:crow+cutoff_frequency, ccol-cutoff_frequency:ccol+cutoff_frequency] = 1
+        filtered_k_space = k_space * mask
+        return filtered_k_space
+
+    def to_spatial_domain(f_shift):
+        f_ishift = np.fft.ifftshift(f_shift)
+        img_back = np.fft.ifft2(f_ishift)
+        img_back = np.abs(img_back)
+        return img_back
+    
+    filtered_images = []
+    for i, img in enumerate(images):
+        # Convert to frequency domain
+        f_shift = to_frequency_domain(img)
+
+        # Apply a low-pass filter
+        filtered_k_space = apply_low_pass_filter(f_shift, cutoff_freq)  # Example cutoff
+
+        # Convert back to spatial domain
+        filtered_img = to_spatial_domain(filtered_k_space)
+        filtered_images.append(filtered_img)
+    
+    return filtered_images
+
 
 def compute_temporal_average(images: List[np.ndarray], window_size: int) -> List[np.ndarray]:
     """
@@ -96,8 +130,8 @@ def apply_clahe(images: List[np.ndarray], clip_limit: float, tile_grid_size: Tup
     return proc_imgs
 
 
-def process_images(images: List[np.ndarray], filenames: List[str], temporal_average_window_size: int, median_kernel_size: int,
-                   clip_limit: float, tile_grid_size: Tuple[int, int], output_folder: str) -> List[np.ndarray]:
+def process_images(images: List[np.ndarray], filenames: List[str], temporal_average_window_size: int, median_kernel_size: int, kspace_cutoff_freq: int
+                   , clip_limit: float, tile_grid_size: Tuple[int, int], output_folder: str) -> List[np.ndarray]:
     """
     Process a list of images for further analysis.
     
@@ -115,22 +149,34 @@ def process_images(images: List[np.ndarray], filenames: List[str], temporal_aver
     if not images:
         raise ValueError("The list of images is empty.")
     
-    # Remove noise
+
+    # 1. Noise reduction
+    # Temporal average
+    """
     #averaged_imgs = compute_temporal_average(images, temporal_average_window_size)
     #cv2.imshow("Averaged Image", cv2.resize(averaged_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     """
+    # Median filter
+    """
     filtered_imgs = apply_median_filter(images, median_kernel_size)
     cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
-    
-
     """
-    # Increase contrast
+    # K-space filtering
+    """
+    filtered_imgs = apply_kspace_filtering(images, kspace_cutoff_freq)
+    #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
+    """
+
+
+    # 2. Contrast enhancement
+    """
     proc_imgs = apply_clahe(images, clip_limit, tile_grid_size)
     #cv2.imshow("CLAHE Image", cv2.resize(proc_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
-    
+    """
 
-    # Save the final segmented image
+    proc_imgs = images
+    # 3. Save the final segmented image
     for i, img in enumerate(proc_imgs):
         processed_filename = f"processed_{filenames[i]}"
         cv2.imwrite(os.path.join(output_folder, processed_filename), img)
