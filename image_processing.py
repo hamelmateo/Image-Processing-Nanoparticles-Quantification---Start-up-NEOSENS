@@ -148,7 +148,7 @@ def process_images(images: List[np.ndarray], filenames: List[str], temporal_aver
     """
     if not images:
         raise ValueError("The list of images is empty.")
-    
+
 
     # 1. Noise reduction
     # Temporal average
@@ -162,11 +162,10 @@ def process_images(images: List[np.ndarray], filenames: List[str], temporal_aver
     cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     """
     # K-space filtering
-    """
+    """"""
     filtered_imgs = apply_kspace_filtering(images, kspace_cutoff_freq)
     #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
-    """
-
+    
 
     # 2. Contrast enhancement
     """
@@ -175,10 +174,9 @@ def process_images(images: List[np.ndarray], filenames: List[str], temporal_aver
     #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
     """
 
-    proc_imgs = images
     # 3. Save the final segmented image
-    for i, img in enumerate(proc_imgs):
+    for i, img in enumerate(filtered_imgs):
         processed_filename = f"processed_{filenames[i]}"
         cv2.imwrite(os.path.join(output_folder, processed_filename), img)
         
-    return proc_imgs
+    return filtered_imgs

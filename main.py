@@ -108,15 +108,14 @@ def main() -> None:
         raw_images, filenames = load_grayscale_images(RAW_IMAGES_DIRECTORY)
         end_time = time.time()
         print(f"Execution time for loading images: {end_time - start_time:.4f} seconds")
-        
+    
+
         # 1. Raw images pre-processing
         # Process images
-        """
-        processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, KSPACE_FILTER_CUTOFF_FREQ
+        """"""
+        processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, KSPACE_FILTER_CUTOFF_FREQ, 
                                                            CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
         print('Processing done')
-        """
-
 
 
         # 2. Nanoparticle identification & quantification
@@ -170,19 +169,22 @@ def main() -> None:
         print(f"White pixel counts comparison has been written to {excel_file_path}")
         """
         
+        """"""
         # Methods implementation (adaptive, fixed & otsu):
         # Segment images
-        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
+        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(processed_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
         print('Segmentation done')
 
         # Apply masks
         masked_images = nanoparticles_counting.apply_masking(segmented_images, masks, filenames, MASKED_IMAGES_DIRECTORY)
         print('Masking done')
 
+
         # Count white pixels and store results in a DataFrame
-        counts = [(filename, nanoparticles_counting.count_white_pixels(img)) for img, filename in zip(masked_images, filenames)]
+        counts = [(filename, nanoparticles_counting.count_white_pixels(img.astype(np.uint8))) for img, filename in zip(masked_images, filenames)]
         save_results_to_excel(counts, RESULTS_DIRECTORY)
         print(f"White pixel counts have been written to Excel.") 
+        
         
 
     except FileNotFoundError as fnf_err:
