@@ -258,7 +258,7 @@ def main():
     """ 
 
 
-    # Gaussian Filter parameter fine tuning
+    # Gaussian Filter fine tuning
     """
     # Define ranges of parameters to test
     kernel_sizes = [5, 11, 17, 23, 29]  # Example odd kernel sizes
@@ -294,14 +294,14 @@ def main():
 
 
     # K-space filtering
-    """
+    """"""
     cutoff_freq = 850
     proc_images = apply_kspace_filtering(raw_images, cutoff_freq)
     for i, img in enumerate(proc_images):
         processed_filename = f"kspace_freq_{cutoff_freq}_{filenames[i]}"
         cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
     print('K-space filtering done')
-    """
+    
 
 
     # Method from acssensors 0c01681 - Gradient-Based Rapid Digital Immunoassay for High-Sensitivity Cardiac Troponin T (hs-cTnT) Detection in 1 μL Plasma 
@@ -316,8 +316,8 @@ def main():
     print('Background substraction')
     """
     # Median filter background substraction
-    """
-    median_kernel_sizes = range(1, 16, 2)
+    """"""
+    median_kernel_sizes = range(5, 30, 2)
 
     for kernel_size in median_kernel_sizes:
         
@@ -330,23 +330,17 @@ def main():
             processed_filename = f"medianfiltered_{kernel_size}_{filenames[i]}"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
     print('Median filter background substraction')
-    """
-    # Gaussian filter background substraction
-    """"""
-    kernel_sizes = [5, 11, 17, 23, 29]  # Example odd kernel sizes
-    sigma_values = [0.5, 1, 1.5, 2, 2.5]  # Example sigma values
-
-    smooth_imgs = test_gaussian_filter_parameters_on_list(raw_images, kernel_sizes, sigma_values)
-
-    # Save each processed image with different Gaussian filter parameters
-    for i, imgs in enumerate(smooth_imgs):
-        for (kernel_size, sigma), img in imgs.items():
-            processed_filename = f"gaussian_{filenames[i]}_kernel_{kernel_size:02d}_sigma_{sigma:.1f}.png"
-            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
-            processed_filename = f"substracted_{filenames[i]}_kernel_{kernel_size:02d}_sigma_{sigma:.1f}.png"
-            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img - raw_images[i])
-    print('Gaussian filter background substraction')
     
+    
+
+
+    # From dict to list of images
+    """
+    smooth_images = []
+    for image_dict in smooth_imgs:
+        for image in image_dict.values():
+            smooth_images.append(image)
+    """
 
     # CLAHE parameter fine tuning
     """
@@ -355,7 +349,7 @@ def main():
     tile_grid_sizes = [(8, 8), (16, 16), (32, 32), (64, 64), (128, 128)]  # Trade off Contrast & SNR --> clip = 2.0, grid = 64x64
 
     # Test CLAHE with different parameters
-    proc_imgs = test_clahe_parameters_on_list(proc_images, clip_limits, tile_grid_sizes)
+    proc_imgs = test_clahe_parameters_on_list(smooth_images, clip_limits, tile_grid_sizes)
 
     # Save each processed image with different CLAHE parameters
     for i, processed_images_dict in enumerate(proc_imgs):

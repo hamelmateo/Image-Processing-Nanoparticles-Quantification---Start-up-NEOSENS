@@ -42,6 +42,8 @@ RESULTS_DIRECTORY = config['RESULTS_DIRECTORY']
 
 TEMPORAL_AVERAGE_WINDOW_SIZE = config['TEMPORAL_AVERAGE_WINDOW_SIZE']
 MEDIAN_FILTER_KERNEL_SIZE = config['MEDIAN_FILTER_KERNEL_SIZE']
+GAUSSIAN_FILTER_KERNEL_SIZE = config['GAUSSIAN_FILTER_KERNEL_SIZE']
+GAUSSIAN_FILTER_SIGMA = config['GAUSSIAN_FILTER_SIGMA']
 KSPACE_FILTER_CUTOFF_FREQ = config['KSPACE_FILTER_CUTOFF_FREQ']
 CLAHE_CLIP_LIMIT = config['CLAHE_CLIP_LIMIT']
 CLAHE_TILE_GRID_SIZE = config['CLAHE_TILE_GRID_SIZE']
@@ -113,8 +115,8 @@ def main() -> None:
         # 1. Raw images pre-processing
         # Process images
         """"""
-        processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, KSPACE_FILTER_CUTOFF_FREQ, 
-                                                           CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
+        processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, GAUSSIAN_FILTER_KERNEL_SIZE, 
+                                                           GAUSSIAN_FILTER_SIGMA, KSPACE_FILTER_CUTOFF_FREQ, CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
         print('Processing done')
 
 
@@ -124,7 +126,7 @@ def main() -> None:
         print('Masks loaded/created')
 
         # To finetune Methods' parameters
-        """
+        """"""
         # Dictionary to hold the counts for different parameters
         results = {}
         
@@ -167,9 +169,9 @@ def main() -> None:
         excel_file_path = os.path.join(RESULTS_DIRECTORY, 'white_pixel_counts_comparison.xlsx')
         df_counts.to_excel(excel_file_path, index=False)
         print(f"White pixel counts comparison has been written to {excel_file_path}")
-        """
         
-        """"""
+        
+        """
         # Methods implementation (adaptive, fixed & otsu):
         # Segment images
         segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(processed_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
@@ -184,7 +186,7 @@ def main() -> None:
         counts = [(filename, nanoparticles_counting.count_white_pixels(img)) for img, filename in zip(masked_images, filenames)]
         save_results_to_excel(counts, RESULTS_DIRECTORY)
         print(f"White pixel counts have been written to Excel.") 
-        
+        """
         
 
     except FileNotFoundError as fnf_err:

@@ -104,6 +104,29 @@ def apply_median_filter(images: List[np.ndarray], kernel_size: int) -> List[np.n
     return filtered_imgs
 
 
+def apply_gaussian_filter(images: List[np.ndarray], kernel_size: int, sigma: int) -> List[np.ndarray]:
+    """
+    Apply a gaussian filter to a list of images.
+    
+    Args:
+        images (List[np.ndarray]): List of images to apply the gaussian filter to.
+        kernel_size (int): Size of the kernel for the gaussian filter.
+        sigma (int): Degree of Blurring
+
+    Returns:
+        List[np.ndarray]: List of images after gaussian filtering.
+    """
+    if not images:
+        raise ValueError("The list of images is empty.")
+    if not all(isinstance(image, np.ndarray) for image in images):
+        raise TypeError("All elements in the images list should be NumPy arrays.")
+    if kernel_size <= 0 or kernel_size % 2 == 0:
+        raise ValueError("Kernel size should be a positive odd integer.")
+    
+    filtered_imgs = [cv2.GaussianBlur(img, (kernel_size, kernel_size), sigma) for img in images]
+    return filtered_imgs
+
+
 def apply_clahe(images: List[np.ndarray], clip_limit: float, tile_grid_size: Tuple[int, int]) -> List[np.ndarray]:
     """
     Apply Contrast Limited Adaptive Histogram Equalization (CLAHE) to a list of images.
@@ -130,8 +153,8 @@ def apply_clahe(images: List[np.ndarray], clip_limit: float, tile_grid_size: Tup
     return proc_imgs
 
 
-def process_images(images: List[np.ndarray], filenames: List[str], temporal_average_window_size: int, median_kernel_size: int, kspace_cutoff_freq: int
-                   , clip_limit: float, tile_grid_size: Tuple[int, int], output_folder: str) -> List[np.ndarray]:
+def process_images(images: List[np.ndarray], filenames: List[str], temporal_average_window_size: int, median_kernel_size: int, gaussian_kernel_size: int, 
+                   gaussian_sigma: int, kspace_cutoff_freq: int, clip_limit: float, tile_grid_size: Tuple[int, int], output_folder: str) -> List[np.ndarray]:
     """
     Process a list of images for further analysis.
     
@@ -139,6 +162,8 @@ def process_images(images: List[np.ndarray], filenames: List[str], temporal_aver
         images (List[np.ndarray]): List of images to process.
         temporal_average_window_size (int): Number of images over which to compute the temporal average.
         median_kernel_size (int): Size of the kernel used for median filtering.
+        gaussian_kernel_size (int): Size of the kernel used for gaussian filtering.
+        gaussian_sigma (int): Degree of blurring used for gaussian filtering
         clip_limit (float): Threshold for contrast limiting in CLAHE.
         tile_grid_size (Tuple[int, int]): Size of the grid for histogram equalization in CLAHE.
         output folder (str): Folder to save the output images.
@@ -162,17 +187,21 @@ def process_images(images: List[np.ndarray], filenames: List[str], temporal_aver
     cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     """
     # K-space filtering
-    """"""
+    """
     filtered_imgs = apply_kspace_filtering(images, kspace_cutoff_freq)
     #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
-
+    """
+    # Gaussian filtering
+    """"""
+    proc_imgs = apply_gaussian_filter(images, gaussian_kernel_size, gaussian_sigma)
+    #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
 
     # 2. Contrast enhancement
-    """"""
+    """
     proc_imgs = apply_clahe(filtered_imgs, clip_limit, tile_grid_size)
     #cv2.imshow("CLAHE Image", cv2.resize(proc_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
-    
+    """
 
     # 3. Save the final segmented image
     for i, img in enumerate(proc_imgs):

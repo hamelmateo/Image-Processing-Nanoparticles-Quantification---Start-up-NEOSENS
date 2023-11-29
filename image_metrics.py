@@ -80,7 +80,7 @@ def calculate_weber_contrast(image: np.ndarray, signal_mask: np.ndarray, backgro
     mean_signal = np.mean(signal_region)
     mean_background = np.mean(background_region)
 
-    weber_contrast = (mean_signal - mean_background) / mean_background if mean_background != 0 else float('inf')
+    weber_contrast = abs(mean_signal - mean_background) / mean_background if mean_background != 0 else float('inf')
     return weber_contrast
 
 
