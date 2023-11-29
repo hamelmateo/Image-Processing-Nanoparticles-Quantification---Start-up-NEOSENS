@@ -134,7 +134,7 @@ def apply_kspace_filtering(images, cutoff_freq):
         filtered_k_space = apply_low_pass_filter(f_shift, cutoff_freq)  # Example cutoff
 
         # Convert back to spatial domain
-        filtered_img = to_spatial_domain(filtered_k_space)
+        filtered_img = to_spatial_domain(filtered_k_space).astype(np.uint8)
         filtered_images.append(filtered_img)
     
     return filtered_images
@@ -195,7 +195,8 @@ def calculate_metrics(proc_images: List[np.ndarray], raw_images: List[np.ndarray
             'Filename': filename,
             'Image Type': 'Raw',
             'SNR': im.calculate_snr(raw_image, signal_mask, bg_mask),
-            'Contrast': im.calculate_contrast(raw_image),
+            'CNR': im.calculate_cnr(raw_image, signal_mask, bg_mask),
+            'Weber Contrast': im.calculate_weber_contrast(raw_image, signal_mask, bg_mask),
             'Entropy': shannon_entropy(raw_image),
             'SSIM': 1.0  # SSIM with itself is 1
         }
@@ -211,7 +212,8 @@ def calculate_metrics(proc_images: List[np.ndarray], raw_images: List[np.ndarray
                 'Filename': proc_filename,
                 'Image Type': 'Processed',
                 'SNR': im.calculate_snr(proc_image, signal_mask, bg_mask),
-                'Contrast': im.calculate_contrast(proc_image),
+                'CNR': im.calculate_cnr(proc_image, signal_mask, bg_mask),
+                'Weber Contrast': im.calculate_weber_contrast(proc_image, signal_mask, bg_mask),
                 'Entropy': shannon_entropy(proc_image),
                 'SSIM': ssim(raw_image, proc_image)
             }
@@ -275,27 +277,8 @@ def main():
     """
 
 
-    # CLAHE parameter fine tuning
+    # K-space filtering fine tuning
     """
-    # Define ranges of parameters to test
-    clip_limits = [2.0, 4.0, 8.0]  # Example values
-    tile_grid_sizes = [(8, 8), (16, 16), (32, 32), (64, 64), (128, 128)]  # Trade off Contrast & SNR --> clip = 2.0, grid = 64x64
-
-    # Test CLAHE with different parameters
-    proc_imgs = test_clahe_parameters_on_list(raw_images, clip_limits, tile_grid_sizes)
-
-    # Save each processed image with different CLAHE parameters
-    for i, processed_images_dict in enumerate(proc_imgs):
-        for (clip_limit, tile_grid_size), processed_image in processed_images_dict.items():
-            # Construct a filename that includes the CLAHE parameters
-            processed_filename = f"processed_{filenames[i]}_clip_{clip_limit}_grid_{tile_grid_size[0]:03d}x{tile_grid_size[1]:03d}.png"
-            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), processed_image)
-    print('CLAHE done')
-    """ 
-
-
-    # K-space filtering & fine tuning
-    """"""
     cutoff_freqs = list(range(700, 900, 10))  # Extended range of values
 
     # Apply K-space filtering
@@ -306,8 +289,20 @@ def main():
         for i, img in enumerate(proc_imgs):
             processed_filename = f"processed_freq_{freq}_{filenames[i]}"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+
+    """
+
+
+    # K-space filtering
+    """
+    cutoff_freq = 850
+    proc_images = apply_kspace_filtering(raw_images, cutoff_freq)
+    for i, img in enumerate(proc_images):
+        processed_filename = f"kspace_freq_{cutoff_freq}_{filenames[i]}"
+        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
     print('K-space filtering done')
-    
+    """
+
 
     # Method from acssensors 0c01681 - Gradient-Based Rapid Digital Immunoassay for High-Sensitivity Cardiac Troponin T (hs-cTnT) Detection in 1 μL Plasma 
     # Subtract the background from each raw image
@@ -335,6 +330,40 @@ def main():
             processed_filename = f"medianfiltered_{kernel_size}_{filenames[i]}"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
     print('Median filter background substraction')
+    """
+    # Gaussian filter background substraction
+    """"""
+    kernel_sizes = [5, 11, 17, 23, 29]  # Example odd kernel sizes
+    sigma_values = [0.5, 1, 1.5, 2, 2.5]  # Example sigma values
+
+    smooth_imgs = test_gaussian_filter_parameters_on_list(raw_images, kernel_sizes, sigma_values)
+
+    # Save each processed image with different Gaussian filter parameters
+    for i, imgs in enumerate(smooth_imgs):
+        for (kernel_size, sigma), img in imgs.items():
+            processed_filename = f"gaussian_{filenames[i]}_kernel_{kernel_size:02d}_sigma_{sigma:.1f}.png"
+            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+            processed_filename = f"substracted_{filenames[i]}_kernel_{kernel_size:02d}_sigma_{sigma:.1f}.png"
+            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img - raw_images[i])
+    print('Gaussian filter background substraction')
+    
+
+    # CLAHE parameter fine tuning
+    """
+    # Define ranges of parameters to test
+    clip_limits = [2.0, 4.0, 8.0]  # Example values
+    tile_grid_sizes = [(8, 8), (16, 16), (32, 32), (64, 64), (128, 128)]  # Trade off Contrast & SNR --> clip = 2.0, grid = 64x64
+
+    # Test CLAHE with different parameters
+    proc_imgs = test_clahe_parameters_on_list(proc_images, clip_limits, tile_grid_sizes)
+
+    # Save each processed image with different CLAHE parameters
+    for i, processed_images_dict in enumerate(proc_imgs):
+        for (clip_limit, tile_grid_size), processed_image in processed_images_dict.items():
+            # Construct a filename that includes the CLAHE parameters
+            processed_filename = f"processed_{filenames[i]}_clip_{clip_limit}_grid_{tile_grid_size[0]:03d}x{tile_grid_size[1]:03d}.png"
+            cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), processed_image)
+    print('CLAHE done')
     """
 
 

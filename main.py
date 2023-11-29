@@ -181,7 +181,7 @@ def main() -> None:
 
 
         # Count white pixels and store results in a DataFrame
-        counts = [(filename, nanoparticles_counting.count_white_pixels(img.astype(np.uint8))) for img, filename in zip(masked_images, filenames)]
+        counts = [(filename, nanoparticles_counting.count_white_pixels(img)) for img, filename in zip(masked_images, filenames)]
         save_results_to_excel(counts, RESULTS_DIRECTORY)
         print(f"White pixel counts have been written to Excel.") 
         

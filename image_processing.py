@@ -42,7 +42,7 @@ def apply_kspace_filtering(images, cutoff_freq):
         filtered_k_space = apply_low_pass_filter(f_shift, cutoff_freq)  # Example cutoff
 
         # Convert back to spatial domain
-        filtered_img = to_spatial_domain(filtered_k_space)
+        filtered_img = to_spatial_domain(filtered_k_space).astype(np.uint8)
         filtered_images.append(filtered_img)
     
     return filtered_images
@@ -165,18 +165,18 @@ def process_images(images: List[np.ndarray], filenames: List[str], temporal_aver
     """"""
     filtered_imgs = apply_kspace_filtering(images, kspace_cutoff_freq)
     #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
-    
+
 
     # 2. Contrast enhancement
-    """
-    proc_imgs = apply_clahe(images, clip_limit, tile_grid_size)
+    """"""
+    proc_imgs = apply_clahe(filtered_imgs, clip_limit, tile_grid_size)
     #cv2.imshow("CLAHE Image", cv2.resize(proc_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
-    """
+    
 
     # 3. Save the final segmented image
-    for i, img in enumerate(filtered_imgs):
+    for i, img in enumerate(proc_imgs):
         processed_filename = f"processed_{filenames[i]}"
         cv2.imwrite(os.path.join(output_folder, processed_filename), img)
         
-    return filtered_imgs
+    return proc_imgs

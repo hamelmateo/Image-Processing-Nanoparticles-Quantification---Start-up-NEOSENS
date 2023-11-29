@@ -39,14 +39,49 @@ def calculate_snr(image: np.ndarray, signal_mask: np.ndarray, background_mask: n
     return mean_signal / std_noise if std_noise != 0 else float('inf')
 
 
-def calculate_contrast(image: np.ndarray) -> float:
+def calculate_cnr(image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
     """
-    Calculate the contrast of an image.
-    Contrast = (Imax - Imin) / (Imax + Imin)
+    Calculate the Contrast-to-Noise Ratio (CNR) of an image.
+
+    Args:
+        image (np.ndarray): The image to analyze.
+        signal_mask (np.ndarray): Mask to isolate the signal region.
+        background_mask (np.ndarray): Mask to isolate the background region.
+
+    Returns:
+        float: The calculated CNR.
     """
-    Imax = np.max(image)
-    Imin = np.min(image)
-    return (Imax - Imin) / (Imax + Imin)
+    signal_region = image[signal_mask == 255]
+    background_region = image[background_mask == 255]
+
+    mean_signal = np.mean(signal_region)
+    mean_background = np.mean(background_region)
+    std_noise = np.std(background_region)
+
+    cnr = abs(mean_signal - mean_background) / std_noise if std_noise != 0 else float('inf')
+    return cnr
+
+
+def calculate_weber_contrast(image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
+    """
+    Calculate the Weber Contrast of an image.
+
+    Args:
+        image (np.ndarray): The image to analyze.
+        signal_mask (np.ndarray): Mask to isolate the signal region.
+        background_mask (np.ndarray): Mask to isolate the background region.
+
+    Returns:
+        float: The calculated Weber Contrast.
+    """
+    signal_region = image[signal_mask == 255]
+    background_region = image[background_mask == 255]
+
+    mean_signal = np.mean(signal_region)
+    mean_background = np.mean(background_region)
+
+    weber_contrast = (mean_signal - mean_background) / mean_background if mean_background != 0 else float('inf')
+    return weber_contrast
 
 
 def calculate_precision_recall_fscore(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[float, float, float]:
