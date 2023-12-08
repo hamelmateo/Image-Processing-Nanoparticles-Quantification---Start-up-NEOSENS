@@ -7,7 +7,6 @@ Created on Wed Oct 25 17:13:01 2023
 try:
     # Standard Library Imports
     import os
-    import time
     import json
     from typing import List, Tuple
 
@@ -15,12 +14,10 @@ try:
     import cv2
     import numpy as np
     import pandas as pd
-    from skimage.measure import shannon_entropy
     from skimage.metrics import structural_similarity as ssim
 
     # Local Module Imports
     import image_metrics as im
-    import image_processing
 except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
@@ -180,41 +177,34 @@ def calculate_metrics(proc_images: List[np.ndarray], raw_images: List[np.ndarray
 
     Returns:
         pd.DataFrame: A DataFrame containing the calculated metrics for each image.
-    """
-    def load_masks(filenames, directory):
-        return [cv2.imread(os.path.join(directory, f'mask_{filename}'), cv2.IMREAD_GRAYSCALE) for filename in filenames]
-    
+    """    
 
-    signal_masks = load_masks(filenames, MASKS_DIRECTORY)
-    bg_masks = load_masks(filenames, MASKS_BG_DIRECTORY)
+    signal_masks = [cv2.imread(os.path.join(MASKS_DIRECTORY, f'mask_{filename}'), cv2.IMREAD_GRAYSCALE) for filename in filenames]
+    bg_mask = cv2.imread(os.path.join(MASKS_BG_DIRECTORY, f'mask_{filenames[0]}'), cv2.IMREAD_GRAYSCALE)
 
     metrics = []
-    for raw_image, filename, signal_mask, bg_mask in zip(raw_images, filenames, signal_masks, bg_masks):
+    for raw_image, filename, signal_mask in zip(raw_images, filenames, signal_masks):
         # Metrics for raw images
         raw_metrics = {
             'Filename': filename,
-            'Image Type': 'Raw',
-            'SNR': im.calculate_snr(raw_image, signal_mask, bg_mask),
-            'CNR': im.calculate_cnr(raw_image, signal_mask, bg_mask),
-            'Weber Contrast': im.calculate_weber_contrast(raw_image, signal_mask, bg_mask),
-            'Entropy': shannon_entropy(raw_image),
+            'SNR': im.calculate_snr(raw_image, raw_images[0], signal_mask, bg_mask),
+            'CNR': im.calculate_cnr(raw_image, raw_images[0], signal_mask, bg_mask),
+            'Weber Contrast': im.calculate_weber_contrast(raw_image, raw_images[0], signal_mask, bg_mask),
             'SSIM': 1.0  # SSIM with itself is 1
         }
         metrics.append(raw_metrics)
 
-    batch_size = 46
+    batch_size = 9
     for i in range(0, len(proc_images), batch_size):
         batch_proc_images = proc_images[i:i + batch_size]
         batch_proc_filenames = proc_filenames[i:i + batch_size]
-        for proc_image, proc_filename, signal_mask, bg_mask in zip(batch_proc_images, batch_proc_filenames, signal_masks, bg_masks):
+        for proc_image, proc_filename, signal_mask in zip(batch_proc_images, batch_proc_filenames, signal_masks):
             # Metrics for processed images
             proc_metrics = {
                 'Filename': proc_filename,
-                'Image Type': 'Processed',
-                'SNR': im.calculate_snr(proc_image, signal_mask, bg_mask),
-                'CNR': im.calculate_cnr(proc_image, signal_mask, bg_mask),
-                'Weber Contrast': im.calculate_weber_contrast(proc_image, signal_mask, bg_mask),
-                'Entropy': shannon_entropy(proc_image),
+                'SNR': im.calculate_snr(proc_image, batch_proc_images[0], signal_mask, bg_mask),
+                'CNR': im.calculate_cnr(proc_image, batch_proc_images[0], signal_mask, bg_mask),
+                'Weber Contrast': im.calculate_weber_contrast(proc_image, batch_proc_images[0], signal_mask, bg_mask),
                 'SSIM': ssim(raw_image, proc_image)
             }
             metrics.append(proc_metrics)
@@ -259,7 +249,7 @@ def main():
 
 
     # Gaussian Filter fine tuning
-    """
+    """"""
     # Define ranges of parameters to test
     kernel_sizes = [5, 11, 17, 23, 29]  # Example odd kernel sizes
     sigma_values = [0.5, 1, 1.5, 2, 2.5]  # Example sigma values
@@ -271,10 +261,10 @@ def main():
     # Save each processed image with different Gaussian filter parameters
     for i, processed_images_dict in enumerate(smooth_imgs):
         for (kernel_size, sigma), processed_image in processed_images_dict.items():
-            processed_filename = f"gaussian_{filenames[i]}_kernel_{kernel_size:02d}_sigma_{sigma:.1f}.png"
+            processed_filename = f"{filenames[i]}_kernel_{kernel_size:02d}_sigma_{sigma:.1f}.png"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), processed_image)
     print('Gaussian filter fine-tuning done')
-    """
+    
 
 
     # K-space filtering fine tuning
@@ -294,14 +284,14 @@ def main():
 
 
     # K-space filtering
-    """"""
+    """
     cutoff_freq = 850
     proc_images = apply_kspace_filtering(raw_images, cutoff_freq)
     for i, img in enumerate(proc_images):
         processed_filename = f"kspace_freq_{cutoff_freq}_{filenames[i]}"
         cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
     print('K-space filtering done')
-    
+    """
 
 
     # Method from acssensors 0c01681 - Gradient-Based Rapid Digital Immunoassay for High-Sensitivity Cardiac Troponin T (hs-cTnT) Detection in 1 μL Plasma 
@@ -316,7 +306,7 @@ def main():
     print('Background substraction')
     """
     # Median filter background substraction
-    """"""
+    """
     median_kernel_sizes = range(5, 30, 2)
 
     for kernel_size in median_kernel_sizes:
@@ -330,7 +320,7 @@ def main():
             processed_filename = f"medianfiltered_{kernel_size}_{filenames[i]}"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
     print('Median filter background substraction')
-    
+    """
     
 
 
@@ -370,6 +360,14 @@ def main():
 
     # Save the results to an Excel file
     results_excel_path = os.path.join(RESULTS_DIRECTORY, "image_processing_metrics_results.xlsx")
+    
+    # Assuming `results_df` is your DataFrame
+    results_df['SNR'] = results_df['SNR'].map(lambda x: f"{x:.1f}")
+    results_df['CNR'] = results_df['CNR'].map(lambda x: f"{x:.2f}")
+    results_df['Weber Contrast'] = results_df['Weber Contrast'].map(lambda x: f"{x:.3f}")
+    results_df['SSIM'] = results_df['SSIM'].map(lambda x: f"{x:.2f}")
+
+    
     results_df.to_excel(results_excel_path, index=False)
 
     print(f"Metrics results saved to {results_excel_path}")

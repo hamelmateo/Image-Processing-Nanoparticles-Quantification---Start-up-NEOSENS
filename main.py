@@ -114,11 +114,11 @@ def main() -> None:
 
         # 1. Raw images pre-processing
         # Process images
-        """"""
+        """
         processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, GAUSSIAN_FILTER_KERNEL_SIZE, 
                                                            GAUSSIAN_FILTER_SIGMA, KSPACE_FILTER_CUTOFF_FREQ, CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
         print('Processing done')
-
+        """
 
         # 2. Nanoparticle identification & quantification
         # Load or create signal masks
@@ -126,26 +126,26 @@ def main() -> None:
         print('Masks loaded/created')
 
         # To finetune Methods' parameters
-        """"""
+        """
         # Dictionary to hold the counts for different parameters
         results = {}
         
         # For adaptive threshold:
-        #block_sizes = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]  # Example values for block size
-        #constants = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]  # Example values for constant
-        #
-        #for block_size in block_sizes:
-        #    for constant in constants:
+        block_sizes = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]  # Example values for block size
+        constants = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]  # Example values for constant
+        
+        for block_size in block_sizes:
+            for constant in constants:
             
         # For fixed threshold:
-        threshold_values = [10, 20, 30, 40, 50, 60, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 
-                            160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250]
-        max_values = [255]  # Typically fixed at 255
+        #threshold_values = [10, 20, 30, 40, 50, 60, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 
+        #                    160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250]
+        #max_values = [255]  # Typically fixed at 255
 
-        for threshold_value in threshold_values:
-            for max_value in max_values:
+        #for threshold_value in threshold_values:
+        #    for max_value in max_values:
                 # Segment images with current block size and constant
-                segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config, threshold_value)
+                segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config, block_size, constant)
 
                 # Apply masking and count white pixels
                 white_pixel_counts = []
@@ -159,7 +159,7 @@ def main() -> None:
                     white_pixel_counts.append(count)
 
                 # Store the results
-                results[f'thresh{threshold_value}'] = white_pixel_counts
+                results[f'w{block_size}_C{constant}'] = white_pixel_counts
 
         # Convert the results to a DataFrame
         df_counts = pd.DataFrame(results)
@@ -169,12 +169,12 @@ def main() -> None:
         excel_file_path = os.path.join(RESULTS_DIRECTORY, 'white_pixel_counts_comparison.xlsx')
         df_counts.to_excel(excel_file_path, index=False)
         print(f"White pixel counts comparison has been written to {excel_file_path}")
-        
-        
         """
+        
+        """"""
         # Methods implementation (adaptive, fixed & otsu):
         # Segment images
-        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(processed_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
+        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
         print('Segmentation done')
 
         # Apply masks
@@ -186,7 +186,7 @@ def main() -> None:
         counts = [(filename, nanoparticles_counting.count_white_pixels(img)) for img, filename in zip(masked_images, filenames)]
         save_results_to_excel(counts, RESULTS_DIRECTORY)
         print(f"White pixel counts have been written to Excel.") 
-        """
+        
         
 
     except FileNotFoundError as fnf_err:

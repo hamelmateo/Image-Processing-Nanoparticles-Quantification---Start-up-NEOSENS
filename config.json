@@ -17,7 +17,7 @@
 "CLAHE_TILE_GRID_SIZE": [8, 8],
 
 
-"THRESHOLDING_METHOD": "fixed",
+"THRESHOLDING_METHOD": "otsu",
 "OTSU_THRESHOLDING": {
     "max_value": 255
 },
@@ -29,7 +29,7 @@
     "threshold_value": 135,
     "max_value": 255
 },
-"ROI_RADIUS": 85,
+"ROI_RADIUS": 80,
 
 "EXCEL_FILE_NAME": "white_pixel_counts.xlsx",
 "ALLOWED_IMAGE_EXTENSIONS": [".png", ".jpg", ".jpeg"]

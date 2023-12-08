@@ -13,7 +13,7 @@ except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
 
-def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[str], output_folder: str, config: dict, threshold_value) -> List[np.ndarray]:
+def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[str], output_folder: str, config: dict) -> List[np.ndarray]:
     """
     Applies thresholding segmentation to a list of images based on the method specified in the configuration. 
     Supports 'adaptive', 'otsu', 'fixed', and 'all' methods. When 'all' is chosen, it applies all three 
@@ -40,9 +40,9 @@ def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[s
     # Extract thresholding configurations from config
     threshold_method = config['THRESHOLDING_METHOD']
     otsu_max_value = config.get('OTSU_THRESHOLDING', {}).get('max_value', 255)
-    adaptive_block_size = config.get('ADAPTIVE_THRESHOLDING', {}).get('block_size', 11)
-    adaptive_constant = config.get('ADAPTIVE_THRESHOLDING', {}).get('constant', 2)
-    #threshold_value = config.get('FIXED_THRESHOLDING', {}).get('threshold_value', 127)
+    adaptive_block_size = config.get('ADAPTIVE_THRESHOLDING', {}).get('block_size', 3)
+    adaptive_constant = config.get('ADAPTIVE_THRESHOLDING', {}).get('constant', 15)
+    threshold_value = config.get('FIXED_THRESHOLDING', {}).get('threshold_value', 135)
     fixed_max_value = config.get('FIXED_THRESHOLDING', {}).get('max_value', 255)
     if threshold_method.lower() == "median":
         median_threshold = calculate_median_threshold(images[0:3])
@@ -93,6 +93,8 @@ def calculate_median_threshold(images: List[np.ndarray]) -> int:
         median = np.median(img.flatten())
         medians.append(median)
 
+    threshold_value = int(sum(medians) / len(medians))
+    print(f"Median threshold value: {threshold_value}")
     return int(sum(medians) / len(medians))
 
 

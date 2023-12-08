@@ -10,6 +10,7 @@ try:
 
     # Third-party Library Imports
     import numpy as np
+    import cv2
     from skimage.metrics import structural_similarity as ssim
     from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 except ImportError as e:
@@ -17,7 +18,7 @@ except ImportError as e:
 
 
 # Define functions to calculate various metrics
-def calculate_snr(image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
+def calculate_snr(image: np.ndarray, bg_image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
     """
     Calculate the Signal-to-Noise Ratio (SNR) of an image using defined signal and background ROIs.
     
@@ -30,8 +31,8 @@ def calculate_snr(image: np.ndarray, signal_mask: np.ndarray, background_mask: n
         float: The calculated SNR.
     """
     # Extract signal and background regions
-    signal_region = image[signal_mask == 255]
-    background_region = image[background_mask == 255]
+    signal_region = cv2.bitwise_not(image[signal_mask == 255])
+    background_region = cv2.bitwise_not(bg_image[background_mask == 255])
 
     # Calculate SNR
     mean_signal = np.mean(signal_region)
@@ -39,7 +40,7 @@ def calculate_snr(image: np.ndarray, signal_mask: np.ndarray, background_mask: n
     return mean_signal / std_noise if std_noise != 0 else float('inf')
 
 
-def calculate_cnr(image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
+def calculate_cnr(image: np.ndarray, bg_image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
     """
     Calculate the Contrast-to-Noise Ratio (CNR) of an image.
 
@@ -51,8 +52,8 @@ def calculate_cnr(image: np.ndarray, signal_mask: np.ndarray, background_mask: n
     Returns:
         float: The calculated CNR.
     """
-    signal_region = image[signal_mask == 255]
-    background_region = image[background_mask == 255]
+    signal_region = cv2.bitwise_not(image[signal_mask == 255])
+    background_region = cv2.bitwise_not(bg_image[background_mask == 255])
 
     mean_signal = np.mean(signal_region)
     mean_background = np.mean(background_region)
@@ -62,7 +63,7 @@ def calculate_cnr(image: np.ndarray, signal_mask: np.ndarray, background_mask: n
     return cnr
 
 
-def calculate_weber_contrast(image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
+def calculate_weber_contrast(image: np.ndarray, bg_image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
     """
     Calculate the Weber Contrast of an image.
 
@@ -74,8 +75,8 @@ def calculate_weber_contrast(image: np.ndarray, signal_mask: np.ndarray, backgro
     Returns:
         float: The calculated Weber Contrast.
     """
-    signal_region = image[signal_mask == 255]
-    background_region = image[background_mask == 255]
+    signal_region = cv2.bitwise_not(image[signal_mask == 255])
+    background_region = cv2.bitwise_not(bg_image[background_mask == 255])
 
     mean_signal = np.mean(signal_region)
     mean_background = np.mean(background_region)
