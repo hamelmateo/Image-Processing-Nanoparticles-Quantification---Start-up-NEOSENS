@@ -8,3 +8,4 @@ neosens-env/
 04_images_segmented/
 05_Results/
 __pycache__
+.vscode
