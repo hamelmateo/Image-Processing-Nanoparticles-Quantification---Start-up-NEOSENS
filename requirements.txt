@@ -1,0 +1,13 @@
+# requirements.txt
+
+opencv-python
+numpy
+scikit-image
+pandas
+# Add other libraries as needed
+
+# Optional dependencies for utility scripts (uncomment if needed)
+# matplotlib
+# moviepy
+
+
