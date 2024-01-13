@@ -1,6 +1,6 @@
 # Image Processing and Nanoparticle Quantification for Effective Biomarker Detection in Sepsis Diagnostics
 
-![NEOSENS Logo](<logo_path>)
+![NEOSENS Logo](<NEOSENS_Logo.png>)
 
 ## Description
 
