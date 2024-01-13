@@ -1,6 +1,15 @@
-import cv2
-import numpy as np
-import os
+"""
+Created on Wed Oct 25 17:13:01 2023
+@author: Mateo HAMEL
+"""
+
+try:
+    import cv2
+    import numpy as np
+
+except ImportError as e:
+    raise ImportError(f"Required modules are missing. {e}")
+
 
 def create_and_save_circle_roi(image_path: str, mask_save_path: str, masked_image_save_path, roi_radius: int):
     """

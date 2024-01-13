@@ -1,5 +1,15 @@
-import matplotlib.pyplot as plt
-import numpy as np
+"""
+Created on Wed Oct 25 17:13:01 2023
+@author: Mateo HAMEL
+"""
+
+try:
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+except ImportError as e:
+    raise ImportError(f"Required modules are missing. {e}")
+
 
 # Concentrations in ng/mL (assuming a consistent order with the count data)
 concentrations = np.array([0, 0, 0, 0, 50, 50, 50, 50, 50, 

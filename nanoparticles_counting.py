@@ -1,6 +1,5 @@
 """
 Created on Sun Oct 22 14:21:03 2023
-
 @author: Mateo HAMEL
 """
 
@@ -16,7 +15,7 @@ except ImportError as e:
 def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[str], output_folder: str, config: dict) -> List[np.ndarray]:
     """
     Applies thresholding segmentation to a list of images based on the method specified in the configuration. 
-    Supports 'adaptive', 'otsu', 'fixed', and 'all' methods. When 'all' is chosen, it applies all three 
+    Supports 'adaptive', 'otsu', 'fixed', 'median' and 'all' methods. When 'all' is chosen, it applies all four 
     methods and saves separate results for each.
 
     Args:
@@ -29,11 +28,15 @@ def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[s
     Returns:
         List[np.ndarray]: List of segmented images. If 'all' methods are applied, returns a concatenated list of 
                           images processed by each method. 
+
+    Raises:
+        ValueError: If the list of images is empty or if the number of images and filenames do not match.
+        ValueError: If an invalid thresholding method is specified in the config.
     """
     if not images:
         raise ValueError("The list of images is empty.")
-    #if len(images) != len(filenames):
-    #    raise ValueError("The number of images and filenames must be the same.")
+    if len(images) != len(filenames):
+        raise ValueError("The number of images and filenames must be the same.")
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -56,7 +59,6 @@ def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[s
 
 
     for i, img in enumerate(images):
-
         # Apply the selected thresholding technique
         if threshold_method.lower() == "adaptive":
             segm_adaptive = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, adaptive_block_size, adaptive_constant) # BINARY_INV to have dark spot labeled as 1
@@ -75,6 +77,7 @@ def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[s
         
     return segmented_images
 
+
 def calculate_median_threshold(images: List[np.ndarray]) -> int:
     """
     Calculate the median threshold value from images.
@@ -84,6 +87,9 @@ def calculate_median_threshold(images: List[np.ndarray]) -> int:
 
     Returns:
         int: Median threshold value.
+
+    Raises:
+        ValueError: If the list of images is empty.
     """
     if not images:
         raise ValueError("The list of images is empty.")
@@ -110,6 +116,10 @@ def load_or_create_masks(filenames: List[str], masks_directory_path: str, img_di
 
     Returns:
         List[np.ndarray]: List of masks for each image.
+
+    Raises:
+        ValueError: If the list of filenames is empty.
+        FileNotFoundError: If the specified image directory does not exist.
     """
     if not filenames:
         raise ValueError("The list of filenames is empty.")
@@ -150,15 +160,18 @@ def get_circle_roi(image: np.ndarray, roi_radius: int) -> np.ndarray:
 
     Returns:
         np.ndarray: The mask image (same size as input, 0 outside ROI, 255 inside).
+
+    Raises:
+        TypeError: If the image is not a NumPy array.
+        ValueError: If the ROI radius is not a positive integer.
     """
     if not isinstance(image, np.ndarray):
         raise TypeError("The image must be a NumPy array.")
     if roi_radius <= 0:
         raise ValueError("ROI radius must be a positive integer.")
 
-    
     mask = np.zeros_like(image)
-    
+
     def draw_circle(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDBLCLK:
             cv2.circle(mask, (x, y), param['radius'], 255, -1)
@@ -190,11 +203,14 @@ def apply_masking(images: List[np.ndarray], masks: List[np.ndarray], filenames: 
 
     Returns:
         List[np.ndarray]: List of masked images.
+
+    Raises:
+        ValueError: If the list of segmented images or masks are empty or if the number of images and filenames do not match. 
     """
     if not images or not masks:
         raise ValueError("The lists of segmented images or masks are empty.")
-    #if len(images) != len(masks) or len(masks) != len(filenames):
-    #    raise ValueError("All lists must have the same number of elements.")
+    if len(images) != len(masks) or len(masks) != len(filenames):
+        raise ValueError("All lists must have the same number of elements.")
 
     masked_imgs = []
     for i, image in enumerate(images):
@@ -220,6 +236,10 @@ def count_white_pixels(binary_image: np.ndarray) -> int:
 
     Returns:
         int: The number of white pixels.
+    
+    Raises:
+        TypeError: If the input is not a NumPy array.
+        ValueError: If the image is not a 2D array with a uint8 datatype.
     """
     if not isinstance(binary_image, np.ndarray):
         raise TypeError("The input must be a NumPy array.")

@@ -1,6 +1,15 @@
-import matplotlib.pyplot as plt
-import numpy as np
-import cv2
+"""
+Created on Wed Oct 25 17:13:01 2023
+@author: Mateo HAMEL
+"""
+
+try:
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import cv2
+    
+except ImportError as e:
+    raise ImportError(f"Required modules are missing. {e}")
 
 # Load an image
 image_path = "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\01_images_raw\\averaged_frame_1.jpg"  # Replace with your image path

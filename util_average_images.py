@@ -1,34 +1,32 @@
 """
 Created on Wed Oct 25 17:13:01 2023
-
 @author: Mateo HAMEL
 """
 
 try:
     # Standard Library Imports
     import os
-    import json
-    from typing import List, Tuple
+    from typing import List
 
     # Third-party Library Imports
     import cv2
     import numpy as np
-
+    
 except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
 
 
-def compute_temporal_average(images: List[np.ndarray], window_size: int) -> List[np.ndarray]:
+def compute_average(images: List[np.ndarray], window_size: int) -> List[np.ndarray]:
     """
-    Compute the temporal average of a list of images over a specified window size.
+    Compute the average of a list of images.
     
     Args:
         images (List[np.ndarray]): List of images to average.
         window_size (int): Number of images to average over.
 
     Returns:
-        List[np.ndarray]: List of temporally averaged images.
+        List[np.ndarray]: List of averaged images.
     """
     if not images:
         raise ValueError("The list of images is empty.")
@@ -59,8 +57,8 @@ def compute_temporal_average(images: List[np.ndarray], window_size: int) -> List
 
 
 # Specify the directory containing the images and window size
-image_directory = "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\00_images_background" # Replace with your actual directory path
-window_size = 4
+image_directory = "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\00_images_background" # TODO: Replace with your actual directory path
+window_size = 4 # TODO: Replace with your window size
 
 # List all image files in the directory
 image_files = [file for file in os.listdir(image_directory) if file.lower().endswith(('.png', '.jpg', '.jpeg'))]
@@ -73,6 +71,6 @@ for image_file in image_files:
     images.append(image)
 
 # Call the function to compute the temporal average
-compute_temporal_average(images, window_size)
+compute_average(images, window_size)
 
 

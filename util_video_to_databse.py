@@ -1,19 +1,18 @@
 """
 Created on Tue Nov 21 16:59:45 2023
-
 @author: Mateo HAMEL
 """
 
 try:
     # Standard Library Imports
     import os
-    from typing import List, Tuple
+    from typing import List
 
     # Third-party Library Imports
     from moviepy.editor import VideoFileClip
     import numpy as np
     import cv2
-
+    
 except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
@@ -140,17 +139,17 @@ def process_video(video_path: str, raw_images_folder: str, averaged_images_folde
     """
 
     # Step 1: Extract raw images from the video
-    #video_raw_images(video_path, raw_images_folder)
-    #print(" Raw images extraction done")
+    video_raw_images(video_path, raw_images_folder)
+    print(" Raw images extraction completed.")
 
     # Step 2: Load images in batches and compute temporal average
     counter = 0
     for batch in load_images_in_batches(raw_images_folder, batch_size):
         averaged_images = compute_temporal_average(batch, window_size)
-        for i, img in enumerate(averaged_images):
+        for img in enumerate(averaged_images):
             counter += 1
             cv2.imwrite(os.path.join(averaged_images_folder, f"averaged_frame_{counter:03d}.jpg"), img)
-    print("Temporal averages done")
+    print("Temporal averages completed.")
 
 
 def main():

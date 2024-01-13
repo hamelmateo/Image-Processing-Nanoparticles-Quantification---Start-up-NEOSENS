@@ -1,10 +1,11 @@
-try:
-    # Standard Library Imports
-    import os
+"""
+Created on Tue Nov 21 16:59:45 2023
+@author: Mateo HAMEL
+"""
 
-    # Third-party Library Imports
+try:
+    import os
     import cv2
-    import numpy as np
 
 except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")

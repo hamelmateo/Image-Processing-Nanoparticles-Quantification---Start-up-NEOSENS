@@ -1,6 +1,5 @@
 """
 Created on Thu Sep 19 10:35:22 2023
-
 @author: Mateo HAMEL
 """
 
@@ -13,37 +12,69 @@ except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
 
-def apply_kspace_filtering(images, cutoff_freq):
+def apply_kspace_filtering(images: List[np.ndarray], cutoff_freq: int) -> List[np.ndarray]:
+    """
+    Apply k-space filtering to a list of images.
+
+    Args:
+        images: List of images to filter.
+        cutoff_freq: Cutoff frequency for the k-space filter.
+
+    Returns:
+        List: List of filtered images.
+        
+    Raises:
+        ValueError: If the images list is empty.
+        ValueError: If cutoff_freq is not a non-negative integer.
+    """
+    if not images:
+        raise ValueError("The list of images is empty.")
+    
+    if not isinstance(cutoff_freq, int) or cutoff_freq < 0:
+        raise ValueError("Cutoff frequency should be a non-negative integer.")
+    
     def to_frequency_domain(image):
-        f_transform = np.fft.fft2(image)
-        f_shift = np.fft.fftshift(f_transform)
-        return f_shift
+        try:
+            f_transform = np.fft.fft2(image)
+            f_shift = np.fft.fftshift(f_transform)
+            return f_shift
+        except Exception as e:
+            raise ValueError("Error during frequency domain transformation.") from e
 
     def apply_low_pass_filter(k_space, cutoff_frequency):
-        rows, cols = k_space.shape
-        crow, ccol = rows // 2, cols // 2
-        mask = np.zeros((rows, cols), np.uint8)
-        mask[crow-cutoff_frequency:crow+cutoff_frequency, ccol-cutoff_frequency:ccol+cutoff_frequency] = 1
-        filtered_k_space = k_space * mask
-        return filtered_k_space
+        try:
+            rows, cols = k_space.shape
+            crow, ccol = rows // 2, cols // 2
+            mask = np.zeros((rows, cols), np.uint8)
+            mask[crow-cutoff_frequency:crow+cutoff_frequency, ccol-cutoff_frequency:ccol+cutoff_frequency] = 1
+            filtered_k_space = k_space * mask
+            return filtered_k_space
+        except Exception as e:
+            raise ValueError("Error during low-pass filter application.") from e
 
     def to_spatial_domain(f_shift):
-        f_ishift = np.fft.ifftshift(f_shift)
-        img_back = np.fft.ifft2(f_ishift)
-        img_back = np.abs(img_back)
-        return img_back
+        try:
+            f_ishift = np.fft.ifftshift(f_shift)
+            img_back = np.fft.ifft2(f_ishift)
+            img_back = np.abs(img_back)
+            return img_back
+        except Exception as e:
+            raise ValueError("Error during spatial domain transformation.") from e
     
     filtered_images = []
-    for i, img in enumerate(images):
-        # Convert to frequency domain
-        f_shift = to_frequency_domain(img)
+    for img in images:
+        try:
+            # Convert to frequency domain
+            f_shift = to_frequency_domain(img)
 
-        # Apply a low-pass filter
-        filtered_k_space = apply_low_pass_filter(f_shift, cutoff_freq)  # Example cutoff
+            # Apply a low-pass filter
+            filtered_k_space = apply_low_pass_filter(f_shift, cutoff_freq)  # Example cutoff
 
-        # Convert back to spatial domain
-        filtered_img = to_spatial_domain(filtered_k_space)
-        filtered_images.append(filtered_img.astype(np.uint8))
+            # Convert back to spatial domain
+            filtered_img = to_spatial_domain(filtered_k_space)
+            filtered_images.append(filtered_img.astype(np.uint8))
+        except Exception as e:
+            raise ValueError("Error during k-space filtering.") from e
     
     return filtered_images
 
@@ -58,6 +89,12 @@ def compute_temporal_average(images: List[np.ndarray], window_size: int) -> List
 
     Returns:
         List[np.ndarray]: List of temporally averaged images.
+
+    Raises:
+        ValueError: If the list of images is empty.
+        TypeError: If not all elements in the images list are NumPy arrays.
+        ValueError: If the window size is not a positive integer.
+        ValueError: If the number of images is less than the window size.
     """
     if not images:
         raise ValueError("The list of images is empty.")
@@ -92,6 +129,11 @@ def apply_median_filter(images: List[np.ndarray], kernel_size: int) -> List[np.n
 
     Returns:
         List[np.ndarray]: List of images after median filtering.
+
+    Raises:
+        ValueError: If the list of images is empty.
+        TypeError: If not all elements in the images list are NumPy arrays.
+        ValueError: If the kernel size is not a positive odd integer.
     """
     if not images:
         raise ValueError("The list of images is empty.")
@@ -111,10 +153,15 @@ def apply_gaussian_filter(images: List[np.ndarray], kernel_size: int, sigma: int
     Args:
         images (List[np.ndarray]): List of images to apply the gaussian filter to.
         kernel_size (int): Size of the kernel for the gaussian filter.
-        sigma (int): Degree of Blurring
+        sigma (int): Degree of blurring.
 
     Returns:
         List[np.ndarray]: List of images after gaussian filtering.
+
+    Raises:
+        ValueError: If the list of images is empty.
+        TypeError: If not all elements in the images list are NumPy arrays.
+        ValueError: If the kernel size is not a positive odd integer.
     """
     if not images:
         raise ValueError("The list of images is empty.")
@@ -138,6 +185,12 @@ def apply_clahe(images: List[np.ndarray], clip_limit: float, tile_grid_size: Tup
 
     Returns:
         List[np.ndarray]: List of images after applying CLAHE.
+
+    Raises:
+        ValueError: If the list of images is empty.
+        TypeError: If not all elements in the images list are NumPy arrays.
+        ValueError: If the clip limit is not a positive float.
+        ValueError: If the tile grid size is not a tuple of two positive integers.
     """
     if not images:
         raise ValueError("The list of images is empty.")
@@ -148,13 +201,10 @@ def apply_clahe(images: List[np.ndarray], clip_limit: float, tile_grid_size: Tup
     if len(tile_grid_size) != 2 or not all(isinstance(dim, int) and dim > 0 for dim in tile_grid_size):
         raise ValueError("Tile grid size should be a tuple of two positive integers.")
 
-
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
     proc_imgs = [clahe.apply(img) for img in images]
     return proc_imgs
 
-
-from typing import List, Tuple
 
 def compute_differential_images(images: List[np.ndarray], original_filenames: List[str]) -> Tuple[List[np.ndarray], List[str]]:
     """
@@ -166,6 +216,10 @@ def compute_differential_images(images: List[np.ndarray], original_filenames: Li
 
     Returns:
         Tuple[List[np.ndarray], List[str]]: List of differential images and their new filenames.
+
+    Raises:
+        ValueError: If fewer than two images are provided for differential imaging.
+        ValueError: If the number of images and filenames do not match.
     """
     if len(images) < 2:
         raise ValueError("At least two images are required for differential imaging.")
@@ -187,8 +241,6 @@ def compute_differential_images(images: List[np.ndarray], original_filenames: Li
     return differential_images, new_filenames
 
 
-
-
 def process_images(images: List[np.ndarray], filenames: List[str], temporal_average_window_size: int, median_kernel_size: int, gaussian_kernel_size: int, 
                    gaussian_sigma: int, kspace_cutoff_freq: int, clip_limit: float, tile_grid_size: Tuple[int, int], output_folder: str) -> List[np.ndarray]:
     """
@@ -199,53 +251,46 @@ def process_images(images: List[np.ndarray], filenames: List[str], temporal_aver
         temporal_average_window_size (int): Number of images over which to compute the temporal average.
         median_kernel_size (int): Size of the kernel used for median filtering.
         gaussian_kernel_size (int): Size of the kernel used for gaussian filtering.
-        gaussian_sigma (int): Degree of blurring used for gaussian filtering
+        gaussian_sigma (int): Degree of blurring used for gaussian filtering.
+        kspace_cutoff_freq (int): Cutoff frequency for k-space filtering.
         clip_limit (float): Threshold for contrast limiting in CLAHE.
         tile_grid_size (Tuple[int, int]): Size of the grid for histogram equalization in CLAHE.
-        output folder (str): Folder to save the output images.
+        output_folder (str): Folder to save the output images.
 
     Returns:
         List[np.ndarray]: List of processed images.
+
+    Raises:
+        ValueError: If the list of images is empty.
     """
     if not images:
         raise ValueError("The list of images is empty.")
-
 
     # 1. Noise reduction
     # Temporal average
     """
     #averaged_imgs = compute_temporal_average(images, temporal_average_window_size)
-    #cv2.imshow("Averaged Image", cv2.resize(averaged_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     """
     # Median filter
     """
     filtered_imgs = apply_median_filter(images, median_kernel_size)
-    cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     """
     # K-space filtering
-    """
+    """"""
     images = apply_kspace_filtering(images, kspace_cutoff_freq)
-    #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
-    """
-
+    
     # Gaussian filtering
-    """
+    """"""
     images = apply_gaussian_filter(images, gaussian_kernel_size, gaussian_sigma)
-    #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
-    """
-
+    
     # Differential Imaging
+    """
     images, filenames = compute_differential_images(images, filenames)
-
+    """
     # 2. Contrast enhancement
     """
     images = apply_clahe(images, clip_limit, tile_grid_size)
-    #cv2.imshow("CLAHE Image", cv2.resize(proc_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
-    #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
     """
-
-
-
 
     # 3. Save the final processed image
     for i, img in enumerate(images):

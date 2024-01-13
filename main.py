@@ -16,8 +16,8 @@ try:
     import pandas as pd
 
     # Local Module Imports
-    import image_processing
-    import nanoparticles_counting
+    import image_processing as ip
+    import nanoparticles_counting as np_count
 except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
@@ -47,12 +47,15 @@ KSPACE_FILTER_CUTOFF_FREQ = config['KSPACE_FILTER_CUTOFF_FREQ']
 CLAHE_CLIP_LIMIT = config['CLAHE_CLIP_LIMIT']
 CLAHE_TILE_GRID_SIZE = config['CLAHE_TILE_GRID_SIZE']
 
+THRESHOLD_METHOD = config['THRESHOLDING_METHOD']
+ENABLE_FINE_TUNING = config["ENABLE_FINE_TUNING"]
+
 ROI_RADIUS = config['ROI_RADIUS']
 EXCEL_FILE_NAME = config['EXCEL_FILE_NAME']
 ALLOWED_IMAGE_EXTENSIONS = tuple(config['ALLOWED_IMAGE_EXTENSIONS'])
 
 
-# Helper Functions
+
 def load_grayscale_images(directory_path: str) -> Tuple[List[np.ndarray], List[str]]:
     """
     Load images from the specified directory and convert them to grayscale.
@@ -71,7 +74,6 @@ def load_grayscale_images(directory_path: str) -> Tuple[List[np.ndarray], List[s
     """
     if not os.path.exists(directory_path):
         raise FileNotFoundError(f"The specified directory does not exist: {directory_path}")
-
     image_filenames = [filename for filename in os.listdir(directory_path) if filename.endswith(ALLOWED_IMAGE_EXTENSIONS)]
     if not image_filenames:
         raise ValueError("No images found in the specified directory.")
@@ -110,6 +112,67 @@ def save_results_to_excel(data: List[Tuple[str, int]], output_folder: str) -> No
         raise
 
 
+def fine_tune_parameters(raw_images: List[np.ndarray], filenames: List[str], config: dict, masks: List[np.ndarray]) -> dict:
+    """
+    Fine-tune parameters for image segmentation based on the thresholding method.
+
+    Args:
+        raw_images (List[np.ndarray]): List of raw images.
+        filenames (List[str]): List of filenames corresponding to the images.
+        config (dict): Configuration settings.
+        masks (List[np.ndarray]): Masks used for image segmentation.
+
+    Returns:
+        dict: A dictionary containing the results of fine-tuning for each set of parameters.
+
+    Raises:
+        Exception: If an error occurs during the segmentation process.
+    """
+    results = {}
+    try:
+        if THRESHOLD_METHOD == 'adaptive':
+            block_sizes = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21] 
+            constants = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+
+            for block_size in block_sizes:
+                for constant in constants:
+                    # NEED TO MODIFY 'APPLY_NANOPARTICLES_SEGMENTATION' DEFINITION
+                    segmented_images = np_count.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config, block_size, constant)
+
+                    white_pixel_counts = []
+                    for i, seg_image in enumerate(segmented_images):
+                        masked_img = cv2.bitwise_and(seg_image, seg_image, mask=masks[i])
+
+                        masked_filename = f"masked_{filenames[i]}"
+                        cv2.imwrite(os.path.join(MASKED_IMAGES_DIRECTORY, masked_filename), masked_img)
+                        count = np_count.count_white_pixels(masked_img)
+                        white_pixel_counts.append(count)
+
+                    results[f'adaptive_{block_size}_{constant}'] = white_pixel_counts
+
+        elif THRESHOLD_METHOD == 'fixed':
+            threshold_values = [135, 155, 175, 210]
+
+            for threshold_value in threshold_values:
+                # NEED TO MODIFY 'APPLY_NANOPARTICLES_SEGMENTATION' DEFINITION
+                segmented_images = np_count.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config, threshold_value)
+
+                white_pixel_counts = []
+                for i, seg_image in enumerate(segmented_images):
+                    masked_img = cv2.bitwise_and(seg_image, seg_image, mask=masks[i])
+
+                    masked_filename = f"masked_{filenames[i]}"
+                    cv2.imwrite(os.path.join(MASKED_IMAGES_DIRECTORY, masked_filename), masked_img)
+                    count = np_count.count_white_pixels(masked_img)
+                    white_pixel_counts.append(count)
+
+                results[f'fixed_thresh{threshold_value}'] = white_pixel_counts
+
+    except Exception as e:
+        raise Exception(f"Error during fine-tuning: {e}")
+
+    return results
+
 
 def main() -> None:
     """
@@ -126,80 +189,51 @@ def main() -> None:
         print(f"Execution time for loading images: {end_time - start_time:.4f} seconds")
     
 
-        # 1. Raw images pre-processing
-        # Process images
-        """"""
-        processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, GAUSSIAN_FILTER_KERNEL_SIZE, 
+        # 1. Raw images processing
+        start_time = time.time()
+        processed_images = ip.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, GAUSSIAN_FILTER_KERNEL_SIZE, 
                                                            GAUSSIAN_FILTER_SIGMA, KSPACE_FILTER_CUTOFF_FREQ, CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
-        print('Processing done')
+        end_time = time.time()
+        print(f"Execution time for processing images: {end_time - start_time:.4f} seconds")
         
 
-        # 2. Nanoparticle identification & quantification
+        # 2. Nanoparticle identification
+        start_time = time.time()
         # Load or create signal masks
-        masks = nanoparticles_counting.load_or_create_masks(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
+        masks = np_count.load_or_create_masks(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
         print('Masks loaded/created')
 
-        # To finetune Methods' parameters
-        """
-        # Dictionary to hold the counts for different parameters
-        results = {}
-        
-        # For adaptive threshold:
-        #block_sizes = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]  # Example values for block size
-        #constants = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]  # Example values for constant
-        
-        #for block_size in block_sizes:
-        #    for constant in constants:
+        if ENABLE_FINE_TUNING:
+            fine_tuning_results = fine_tune_parameters(raw_images, filenames, config, masks)
+            # Convert the results to a DataFrame
+            df_counts = pd.DataFrame(fine_tuning_results)
+            df_counts.insert(0, 'Filename', filenames)
+
+            # Save to Excel file
+            excel_file_path = os.path.join(RESULTS_DIRECTORY, 'Finetuning_Results.xlsx')
+            df_counts.to_excel(excel_file_path, index=False)
+            print(f"Fine tuning completed. Results are available in {RESULTS_DIRECTORY}")
+            end_time = time.time()
+            print(f"Execution time for fine tuning: {end_time - start_time:.4f} seconds")
+
+        else:
+            # Segment images
+            segmented_images = np_count.apply_nanoparticles_segmentation(processed_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
+            print('Features segmented')
             
-        # For fixed threshold:
-        threshold_values = [135]
-        max_values = [255]  # Typically fixed at 255
+            # Apply masks
+            masked_images = np_count.apply_masking(segmented_images, masks, filenames, MASKED_IMAGES_DIRECTORY)
+            print('Masking Applied')
+            end_time = time.time()
+            print(f"Execution time for identifying nanoparticles: {end_time - start_time:.4f} seconds")
 
-        for threshold_value in threshold_values:
-            for max_value in max_values:
-                # Segment images with current block size and constant
-                segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config, threshold_value)
-
-                # Apply masking and count white pixels
-                white_pixel_counts = []
-                for i, seg_image in enumerate(segmented_images):
-                    masked_img = cv2.bitwise_and(seg_image, seg_image, mask=masks[i])
-
-                    # Save the final segmented image
-                    masked_filename = f"masked_{filenames[i]}"
-                    cv2.imwrite(os.path.join(MASKED_IMAGES_DIRECTORY, masked_filename), masked_img)
-                    count = nanoparticles_counting.count_white_pixels(masked_img)
-                    white_pixel_counts.append(count)
-
-                # Store the results
-                results[f'thresh{threshold_value}'] = white_pixel_counts
-
-        # Convert the results to a DataFrame
-        df_counts = pd.DataFrame(results)
-        df_counts.insert(0, 'Filename', filenames)
-
-        # Save to Excel file
-        excel_file_path = os.path.join(RESULTS_DIRECTORY, 'white_pixel_counts_comparison.xlsx')
-        df_counts.to_excel(excel_file_path, index=False)
-        print(f"White pixel counts comparison has been written to {excel_file_path}")
-        """
-        
-        """"""
-        # Methods implementation (adaptive, fixed & otsu):
-        # Segment images
-        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(processed_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
-        print('Segmentation done')
-        
-        # Apply masks
-        masked_images = nanoparticles_counting.apply_masking(segmented_images, masks, filenames, MASKED_IMAGES_DIRECTORY)
-        print('Masking done')
-
-
-        # Count white pixels and store results in a DataFrame
-        counts = [(filename, nanoparticles_counting.count_white_pixels(img)) for img, filename in zip(masked_images, filenames)]
-        save_results_to_excel(counts, RESULTS_DIRECTORY)
-        print(f"White pixel counts have been written to Excel.") 
-        
+            # 3. Nanoparticle quantification
+            start_time = time.time()
+            counts = [(filename, np_count.count_white_pixels(img)) for img, filename in zip(masked_images, filenames)]
+            save_results_to_excel(counts, RESULTS_DIRECTORY)
+            print(f"Analysis completed. Results are available in {RESULTS_DIRECTORY}") 
+            end_time = time.time()
+            print(f"Execution time for quantifying naoparticles: {end_time - start_time:.4f} seconds")
         
 
     except FileNotFoundError as fnf_err:

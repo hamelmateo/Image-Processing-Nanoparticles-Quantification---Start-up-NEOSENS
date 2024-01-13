@@ -1,5 +1,15 @@
-import matplotlib.pyplot as plt
-import numpy as np
+"""
+Created on Wed Oct 25 17:13:01 2023
+@author: Mateo HAMEL
+"""
+
+try:
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+except ImportError as e:
+    raise ImportError(f"Required modules are missing. {e}")
+
 
 # Data
 frame_numbers = list(range(1, 27))
