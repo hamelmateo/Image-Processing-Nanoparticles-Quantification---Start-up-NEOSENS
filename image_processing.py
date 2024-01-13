@@ -42,8 +42,8 @@ def apply_kspace_filtering(images, cutoff_freq):
         filtered_k_space = apply_low_pass_filter(f_shift, cutoff_freq)  # Example cutoff
 
         # Convert back to spatial domain
-        filtered_img = to_spatial_domain(filtered_k_space).astype(np.uint8)
-        filtered_images.append(filtered_img)
+        filtered_img = to_spatial_domain(filtered_k_space)
+        filtered_images.append(filtered_img.astype(np.uint8))
     
     return filtered_images
 
@@ -148,9 +148,45 @@ def apply_clahe(images: List[np.ndarray], clip_limit: float, tile_grid_size: Tup
     if len(tile_grid_size) != 2 or not all(isinstance(dim, int) and dim > 0 for dim in tile_grid_size):
         raise ValueError("Tile grid size should be a tuple of two positive integers.")
 
+
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
     proc_imgs = [clahe.apply(img) for img in images]
     return proc_imgs
+
+
+from typing import List, Tuple
+
+def compute_differential_images(images: List[np.ndarray], original_filenames: List[str]) -> Tuple[List[np.ndarray], List[str]]:
+    """
+    Compute differential images from a list of images and generate new filenames for them.
+
+    Args:
+        images (List[np.ndarray]): List of images.
+        original_filenames (List[str]): List of original filenames corresponding to the images.
+
+    Returns:
+        Tuple[List[np.ndarray], List[str]]: List of differential images and their new filenames.
+    """
+    if len(images) < 2:
+        raise ValueError("At least two images are required for differential imaging.")
+    if len(images) != len(original_filenames):
+        raise ValueError("The number of images and filenames should be equal.")
+
+    differential_images = []
+    new_filenames = []
+
+    # assuming each set of three images produces one differential image
+    for i in range(len(images) // 3):
+        # Compute the absolute difference between consecutive sets of images
+        diff = cv2.bitwise_not(cv2.absdiff(images[3*i], images[3*i + 3]))
+
+        differential_images.append(diff)
+        new_filename = f"differential_{original_filenames[3*i]}"
+        new_filenames.append(new_filename)
+
+    return differential_images, new_filenames
+
+
 
 
 def process_images(images: List[np.ndarray], filenames: List[str], temporal_average_window_size: int, median_kernel_size: int, gaussian_kernel_size: int, 
@@ -188,24 +224,32 @@ def process_images(images: List[np.ndarray], filenames: List[str], temporal_aver
     """
     # K-space filtering
     """
-    filtered_imgs = apply_kspace_filtering(images, kspace_cutoff_freq)
+    images = apply_kspace_filtering(images, kspace_cutoff_freq)
     #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     """
+
     # Gaussian filtering
-    """"""
-    proc_imgs = apply_gaussian_filter(images, gaussian_kernel_size, gaussian_sigma)
+    """
+    images = apply_gaussian_filter(images, gaussian_kernel_size, gaussian_sigma)
     #cv2.imshow("Filtered Image", cv2.resize(filtered_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
+    """
+
+    # Differential Imaging
+    images, filenames = compute_differential_images(images, filenames)
 
     # 2. Contrast enhancement
     """
-    proc_imgs = apply_clahe(filtered_imgs, clip_limit, tile_grid_size)
+    images = apply_clahe(images, clip_limit, tile_grid_size)
     #cv2.imshow("CLAHE Image", cv2.resize(proc_imgs[3], None, fx=0.20, fy=0.20, interpolation=cv2.INTER_AREA))
     #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
     """
 
-    # 3. Save the final segmented image
-    for i, img in enumerate(proc_imgs):
+
+
+
+    # 3. Save the final processed image
+    for i, img in enumerate(images):
         processed_filename = f"processed_{filenames[i]}"
         cv2.imwrite(os.path.join(output_folder, processed_filename), img)
         
-    return proc_imgs
+    return images

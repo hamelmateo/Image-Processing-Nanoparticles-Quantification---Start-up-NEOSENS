@@ -1,6 +1,5 @@
 """
 Created on Thu Sep 19 10:35:22 2023
-
 @author: Mateo HAMEL
 """
 
@@ -15,20 +14,21 @@ try:
     import cv2
     import numpy as np
     import pandas as pd
-    from skimage.measure import shannon_entropy
-    from skimage.metrics import structural_similarity as ssim
 
     # Local Module Imports
     import image_processing
     import nanoparticles_counting
-    import image_metrics
 except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
 
 # Load the configuration file
-with open('config.json', 'r') as config_file:
-    config = json.load(config_file)
+try:
+    with open('config.json', 'r') as config_file:
+        config = json.load(config_file)
+except FileNotFoundError:
+    raise FileNotFoundError("Config file 'config.json' not found.")
+
 
 # Config variables
 MASKS_DIRECTORY = config['MASKS_DIRECTORY']
@@ -39,7 +39,6 @@ MASKED_IMAGES_DIRECTORY = config['MASKED_IMAGES_DIRECTORY']
 SEGMENTED_IMAGES_DIRECTORY = config['SEGMENTED_IMAGES_DIRECTORY']
 RESULTS_DIRECTORY = config['RESULTS_DIRECTORY']
 
-
 TEMPORAL_AVERAGE_WINDOW_SIZE = config['TEMPORAL_AVERAGE_WINDOW_SIZE']
 MEDIAN_FILTER_KERNEL_SIZE = config['MEDIAN_FILTER_KERNEL_SIZE']
 GAUSSIAN_FILTER_KERNEL_SIZE = config['GAUSSIAN_FILTER_KERNEL_SIZE']
@@ -47,7 +46,6 @@ GAUSSIAN_FILTER_SIGMA = config['GAUSSIAN_FILTER_SIGMA']
 KSPACE_FILTER_CUTOFF_FREQ = config['KSPACE_FILTER_CUTOFF_FREQ']
 CLAHE_CLIP_LIMIT = config['CLAHE_CLIP_LIMIT']
 CLAHE_TILE_GRID_SIZE = config['CLAHE_TILE_GRID_SIZE']
-
 
 ROI_RADIUS = config['ROI_RADIUS']
 EXCEL_FILE_NAME = config['EXCEL_FILE_NAME']
@@ -88,12 +86,28 @@ def load_grayscale_images(directory_path: str) -> Tuple[List[np.ndarray], List[s
 
 
 def save_results_to_excel(data: List[Tuple[str, int]], output_folder: str) -> None:
+    """
+    Save the provided data as an Excel file in the specified output folder.
+
+    Args:
+        data (List[Tuple[str, int]]): A list of tuples, each containing a filename and an associated white pixel count.
+        output_folder (str): The path to the directory where the Excel file will be saved.
+
+    Raises:
+        FileNotFoundError: If the specified output directory does not exist.
+        Exception: For any other issues that occur during the saving process.
+    """
+    if not os.path.exists(output_folder):
+        raise FileNotFoundError(f"The specified output directory does not exist: {output_folder}")
+
     df_counts = pd.DataFrame(data, columns=['Filename', 'White Pixel Count'])
     excel_file_path = os.path.join(output_folder, EXCEL_FILE_NAME)
+
     try:
         df_counts.to_excel(excel_file_path, index=False)
     except Exception as e:
         print(f"Failed to save to Excel: {e}")
+        raise
 
 
 
@@ -114,11 +128,11 @@ def main() -> None:
 
         # 1. Raw images pre-processing
         # Process images
-        """
+        """"""
         processed_images = image_processing.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, GAUSSIAN_FILTER_KERNEL_SIZE, 
                                                            GAUSSIAN_FILTER_SIGMA, KSPACE_FILTER_CUTOFF_FREQ, CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
         print('Processing done')
-        """
+        
 
         # 2. Nanoparticle identification & quantification
         # Load or create signal masks
@@ -131,21 +145,20 @@ def main() -> None:
         results = {}
         
         # For adaptive threshold:
-        block_sizes = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]  # Example values for block size
-        constants = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]  # Example values for constant
+        #block_sizes = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]  # Example values for block size
+        #constants = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]  # Example values for constant
         
-        for block_size in block_sizes:
-            for constant in constants:
+        #for block_size in block_sizes:
+        #    for constant in constants:
             
         # For fixed threshold:
-        #threshold_values = [10, 20, 30, 40, 50, 60, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 
-        #                    160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250]
-        #max_values = [255]  # Typically fixed at 255
+        threshold_values = [135]
+        max_values = [255]  # Typically fixed at 255
 
-        #for threshold_value in threshold_values:
-        #    for max_value in max_values:
+        for threshold_value in threshold_values:
+            for max_value in max_values:
                 # Segment images with current block size and constant
-                segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config, block_size, constant)
+                segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config, threshold_value)
 
                 # Apply masking and count white pixels
                 white_pixel_counts = []
@@ -159,7 +172,7 @@ def main() -> None:
                     white_pixel_counts.append(count)
 
                 # Store the results
-                results[f'w{block_size}_C{constant}'] = white_pixel_counts
+                results[f'thresh{threshold_value}'] = white_pixel_counts
 
         # Convert the results to a DataFrame
         df_counts = pd.DataFrame(results)
@@ -174,9 +187,9 @@ def main() -> None:
         """"""
         # Methods implementation (adaptive, fixed & otsu):
         # Segment images
-        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
+        segmented_images = nanoparticles_counting.apply_nanoparticles_segmentation(processed_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
         print('Segmentation done')
-
+        
         # Apply masks
         masked_images = nanoparticles_counting.apply_masking(segmented_images, masks, filenames, MASKED_IMAGES_DIRECTORY)
         print('Masking done')

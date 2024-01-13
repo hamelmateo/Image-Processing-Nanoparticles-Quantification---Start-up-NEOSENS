@@ -32,8 +32,8 @@ def apply_nanoparticles_segmentation(images: List[np.ndarray], filenames: List[s
     """
     if not images:
         raise ValueError("The list of images is empty.")
-    if len(images) != len(filenames):
-        raise ValueError("The number of images and filenames must be the same.")
+    #if len(images) != len(filenames):
+    #    raise ValueError("The number of images and filenames must be the same.")
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -193,8 +193,8 @@ def apply_masking(images: List[np.ndarray], masks: List[np.ndarray], filenames: 
     """
     if not images or not masks:
         raise ValueError("The lists of segmented images or masks are empty.")
-    if len(images) != len(masks) or len(masks) != len(filenames):
-        raise ValueError("All lists must have the same number of elements.")
+    #if len(images) != len(masks) or len(masks) != len(filenames):
+    #    raise ValueError("All lists must have the same number of elements.")
 
     masked_imgs = []
     for i, image in enumerate(images):

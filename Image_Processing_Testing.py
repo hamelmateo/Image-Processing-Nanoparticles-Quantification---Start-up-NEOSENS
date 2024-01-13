@@ -8,7 +8,7 @@ try:
     # Standard Library Imports
     import os
     import json
-    from typing import List, Tuple
+    from typing import List
 
     # Third-party Library Imports
     import cv2
@@ -18,7 +18,6 @@ try:
 
     # Local Module Imports
     import image_metrics as im
-    import image_processing
 except ImportError as e:
     raise ImportError(f"Required modules are missing. {e}")
 
@@ -185,11 +184,12 @@ def calculate_metrics(proc_images: List[np.ndarray], raw_images: List[np.ndarray
 
     metrics = []
     for raw_image, filename, signal_mask in zip(raw_images, filenames, signal_masks):
+        
         # Metrics for raw images
         raw_metrics = {
             'Filename': filename,
             'SNR': im.calculate_snr(raw_image, raw_images[0], signal_mask, bg_mask),
-            'CNR': im.calculate_cnr(raw_image, raw_images[0], signal_mask, bg_mask, 0),
+            'CNR': im.calculate_cnr(raw_image, raw_images[0], signal_mask, bg_mask),
             'Weber Contrast': im.calculate_weber_contrast(raw_image, raw_images[0], signal_mask, bg_mask),
             'SSIM': 1.0  # SSIM with itself is 1
         }
@@ -204,7 +204,7 @@ def calculate_metrics(proc_images: List[np.ndarray], raw_images: List[np.ndarray
             proc_metrics = {
                 'Filename': proc_filename,
                 'SNR': im.calculate_snr(proc_image, batch_proc_images[0], signal_mask, bg_mask),
-                'CNR': im.calculate_cnr(proc_image, batch_proc_images[0], signal_mask, bg_mask, i),
+                'CNR': im.calculate_cnr(proc_image, batch_proc_images[0], signal_mask, bg_mask),
                 'Weber Contrast': im.calculate_weber_contrast(proc_image, batch_proc_images[0], signal_mask, bg_mask),
                 'SSIM': ssim(raw_image, proc_image)
             }
@@ -268,10 +268,25 @@ def main():
     """
     cutoff_freq = 160
     proc_images = apply_kspace_filtering(raw_images, cutoff_freq)
-    for i, img in enumerate(proc_images):
-        processed_filename = f"{filenames[i]}_freq_{cutoff_freq:04d}.png"
-        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+    #for i, img in enumerate(proc_images):
+    #    processed_filename = f"{filenames[i]}_freq_{cutoff_freq:04d}.png"
+    #    cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
     print('K-space filtering done')
+    """
+
+
+    # Gaussian Filter
+    """
+    # Define ranges of parameters to test
+    kernel_size = 5  # Example odd kernel sizes
+    sigma = 0.5  # Example sigma values
+
+    # Test Gaussian filter with different parameters
+    proc_images =  [cv2.GaussianBlur(image, (kernel_size, kernel_size), sigma) for image in proc_images]
+    for i, img in enumerate(proc_images):
+        processed_filename = f"{filenames[i]}_kernel_{kernel_size:02d}_sigma_{sigma:.1f}.png"
+        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
+    print('Gaussian filter done')
     """
 
 
@@ -294,25 +309,11 @@ def main():
     """
 
 
-    # Gaussian Filter
-    """
-    # Define ranges of parameters to test
-    kernel_size = 5  # Example odd kernel sizes
-    sigma = 0.5  # Example sigma values
-
-    # Test Gaussian filter with different parameters
-    proc_images =  [cv2.GaussianBlur(image, (kernel_size, kernel_size), sigma) for image in proc_images]
-    for i, img in enumerate(proc_images):
-        processed_filename = f"{filenames[i]}_kernel_{kernel_size:02d}_sigma_{sigma:.1f}.png"
-        cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
-    print('Gaussian filter done')
-    """
-
-
     # Method from acssensors 0c01681 - Gradient-Based Rapid Digital Immunoassay for High-Sensitivity Cardiac Troponin T (hs-cTnT) Detection in 1 μL Plasma 
     # Subtract the background from each raw image
-    """"""
+    """
     subtracted_images = [cv2.subtract(bg_image[0], raw_image) for raw_image in raw_images]
+    """
     """
     # Save the result image
     for i, img in enumerate(subtracted_images):
@@ -321,7 +322,7 @@ def main():
     print('Background substraction')
     """
     # Median filter background substraction
-    """"""
+    """
     median_kernel_sizes = range(3, 30, 2)
 
     for kernel_size in median_kernel_sizes:
@@ -335,9 +336,11 @@ def main():
             #processed_filename = f"{filenames[i]}_kernel_{kernel_size}.png"
             #cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), img)
     print('Median filter background substraction')
-    
     """
+    
+
     # Median filtering
+    """
     kernel_size = 3
 
     proc_imgs = image_processing.apply_median_filter(subtracted_images, kernel_size)
@@ -361,31 +364,32 @@ def main():
             smooth_images.append(image)
     """
 
+
     # CLAHE parameter fine tuning
     """
     # Define ranges of parameters to test
-    clip_limits = [2.0, 4.0, 8.0]  # Example values
-    tile_grid_sizes = [(8, 8), (16, 16), (32, 32), (64, 64), (128, 128)]  # Trade off Contrast & SNR --> clip = 2.0, grid = 64x64
+    #clip_limits = [1.0]
+    clip_limits = [0.5, 1.0, 2.0, 4.0, 8.0]  # Example values
+    #tile_grid_sizes = [(8,8)]
+    tile_grid_sizes = [(8, 8), (16, 16), (32, 32), (64, 64)]  # Trade off Contrast & SNR --> clip = 2.0, grid = 64x64
 
     # Test CLAHE with different parameters
-    proc_imgs = test_clahe_parameters_on_list(proc_imgs, clip_limits, tile_grid_sizes)
+    proc_imgs = test_clahe_parameters_on_list(raw_images, clip_limits, tile_grid_sizes)
 
     # Save each processed image with different CLAHE parameters
     for i, processed_images_dict in enumerate(proc_imgs):
         for (clip_limit, tile_grid_size), processed_image in processed_images_dict.items():
             # Construct a filename that includes the CLAHE parameters
-            processed_filename = f"processed_{filenames[i]}_clip_{clip_limit}_grid_{tile_grid_size[0]:03d}x{tile_grid_size[1]:03d}.png"
+            processed_filename = f"clip_{clip_limit}_grid_{tile_grid_size[0]:03d}x{tile_grid_size[1]:03d}_{filenames[i]}"
             cv2.imwrite(os.path.join(PROCESSED_IMAGES_DIRECTORY, processed_filename), processed_image)
     print('CLAHE done')
     """
 
 
-    # Differential imaging
-    #TODO later
 
     # Calculate metrics for the processed images
     proc_images, proc_filenames = load_grayscale_images(PROCESSED_IMAGES_DIRECTORY)
-    results_df = calculate_metrics(proc_images, raw_images, proc_imgs[0], filenames, proc_filenames)
+    results_df = calculate_metrics(proc_images, raw_images, bg_image, filenames, proc_filenames)
 
     # Save the results to an Excel file
     results_excel_path = os.path.join(RESULTS_DIRECTORY, "image_processing_metrics_results.xlsx")

@@ -30,9 +30,12 @@ def calculate_snr(image: np.ndarray, bg_image: np.ndarray, signal_mask: np.ndarr
     Returns:
         float: The calculated SNR.
     """
+
     # Extract signal and background regions
-    signal_region = cv2.bitwise_and(image, image, mask=signal_mask)
-    background_region = cv2.bitwise_and(bg_image, bg_image, mask=background_mask)
+    signal_region = cv2.bitwise_not(image[signal_mask == 255])
+    background_region = cv2.bitwise_not(image[background_mask == 255])
+    #signal_region = image[signal_mask == 255]
+    #background_region = image[background_mask == 255]
 
     # Calculate SNR
     mean_signal = np.mean(signal_region)
@@ -40,7 +43,7 @@ def calculate_snr(image: np.ndarray, bg_image: np.ndarray, signal_mask: np.ndarr
     return mean_signal / std_noise if std_noise != 0 else float('inf')
 
 
-def calculate_cnr(image: np.ndarray, bg_image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray, i) -> float:
+def calculate_cnr(image: np.ndarray, bg_image: np.ndarray, signal_mask: np.ndarray, background_mask: np.ndarray) -> float:
     """
     Calculate the Contrast-to-Noise Ratio (CNR) of an image.
 
@@ -52,13 +55,16 @@ def calculate_cnr(image: np.ndarray, bg_image: np.ndarray, signal_mask: np.ndarr
     Returns:
         float: The calculated CNR.
     """
-    #signal_region = cv2.bitwise_not(cv2.bitwise_and(image, image, mask=signal_mask))
-    #background_region = cv2.bitwise_not(cv2.bitwise_and(bg_image, bg_image, mask=background_mask))
-    signal_region = cv2.bitwise_and(image, image, mask=signal_mask)
-    background_region = cv2.bitwise_and(bg_image, bg_image, mask=background_mask)
+    signal_region = cv2.bitwise_not(image[signal_mask == 255])
+    background_region = cv2.bitwise_not(image[background_mask == 255])
+    
+    #cv2.imwrite(f"{i}_testsignal.png",signal_region)
+    #cv2.imwrite(f"{i}_testbg.png",background_region)
 
     mean_signal = np.mean(signal_region)
+    #print(f"signal:{mean_signal}")
     mean_background = np.mean(background_region)
+    #print(f"background:{mean_background}")
     std_noise = np.std(background_region)
 
     cnr = abs(mean_signal - mean_background) / std_noise if std_noise != 0 else float('inf')
@@ -77,8 +83,8 @@ def calculate_weber_contrast(image: np.ndarray, bg_image: np.ndarray, signal_mas
     Returns:
         float: The calculated Weber Contrast.
     """
-    signal_region = cv2.bitwise_and(image, image, mask=signal_mask)
-    background_region = cv2.bitwise_and(bg_image, bg_image, mask=background_mask)
+    signal_region = cv2.bitwise_not(image[signal_mask == 255])
+    background_region = cv2.bitwise_not(image[background_mask == 255])
 
     mean_signal = np.mean(signal_region)
     mean_background = np.mean(background_region)

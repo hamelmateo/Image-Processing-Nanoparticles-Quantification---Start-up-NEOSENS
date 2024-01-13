@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 
 # Load an image
-image_path = "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\01_images_raw\\01000_A1.png"  # Replace with your image path
+image_path = "C:\\Users\\hamel\\OneDrive - Neosens Diagnostics\\04_Technology_Software\\Image Processing\\NEOSENS\\01_images_raw\\averaged_frame_1.jpg"  # Replace with your image path
 image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
 # Apply Fourier Transform
@@ -19,7 +19,7 @@ mask = np.zeros((rows, cols), np.uint8)
 mask[crow-f:crow+f, ccol-f:ccol+f] = 1  # The size of the square is 60x60
 
 # Apply mask to the frequency domain
-f_shift_masked = f_shift * mask
+f_shift_masked = f_shift #* mask
 magnitude_spectrum_masked = 20 * np.log(np.abs(f_shift_masked))
 
 # Inverse FFT to get the filtered image back in the spatial domain
