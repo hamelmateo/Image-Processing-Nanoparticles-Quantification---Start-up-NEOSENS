@@ -33,6 +33,7 @@
 },
 "ROI_RADIUS": 500,
 
+"IMAGE_TIME_INTERVAL": 20,
 "EXCEL_FILE_NAME": "white_pixel_counts.xlsx",
 "ALLOWED_IMAGE_EXTENSIONS": [".png", ".jpg", ".jpeg"]
 }

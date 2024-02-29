@@ -15,6 +15,7 @@ try:
     import cv2
     import numpy as np
     import pandas as pd
+    import matplotlib.pyplot as plt
 
     # Local Module Imports
     import image_processing as ip
@@ -52,6 +53,7 @@ THRESHOLD_METHOD = config['THRESHOLDING_METHOD']
 ENABLE_FINE_TUNING = config["ENABLE_FINE_TUNING"]
 
 ROI_RADIUS = config['ROI_RADIUS']
+IMAGE_TIME_INTERVAL = config['IMAGE_TIME_INTERVAL']
 EXCEL_FILE_NAME = config['EXCEL_FILE_NAME']
 ALLOWED_IMAGE_EXTENSIONS = tuple(config['ALLOWED_IMAGE_EXTENSIONS'])
 
@@ -129,6 +131,39 @@ def clean_directory(folder_path):
                 shutil.rmtree(file_path)
         except Exception as e:
             print(f'Failed to delete {file_path}. Reason: {e}')
+
+
+def plot_white_pixel_count_vs_time(counts, time_interval, output_folder):
+    """
+    Plot the white pixel count vs. time and save the plot.
+    
+    Args:
+        counts (List[int]): List of white pixel counts.
+        time_interval (float): Time interval between each image in seconds.
+        output_folder (str): Folder to save the plot.
+    """
+    # Time points
+    times = np.arange(len(counts)) * time_interval
+    
+    # Calculate the average slope
+    slopes = np.diff(counts) / time_interval
+    average_slope = np.mean(slopes)
+    
+    # Plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(times, counts, linestyle='-', color='blue')
+    plt.title(f'White Pixel Count vs. Time\nAverage Slope: {average_slope:.2f} pixels/second')
+    plt.xlabel('Time (seconds)')
+    plt.ylabel('White Pixel Count')
+    plt.grid(True)
+    
+    # Save the plot
+    plot_path = os.path.join(output_folder, "white_pixel_count_vs_time.png")
+    plt.savefig(plot_path)
+    print(f"Plot saved to {plot_path}")
+    
+    plt.close()
+
 
 
 def fine_tune_parameters(raw_images: List[np.ndarray], filenames: List[str], config: dict, mask: np.ndarray) -> dict:
@@ -259,6 +294,9 @@ def main() -> None:
             end_time = time.time()
             print(f"Execution time for quantifying nanoparticles: {end_time - start_time:.4f} seconds")
         
+
+        # Plot white pixel count vs. time
+        plot_white_pixel_count_vs_time([count for _, count in counts], IMAGE_TIME_INTERVAL, RESULTS_DIRECTORY)
 
     except FileNotFoundError as fnf_err:
         print(f"Error: {fnf_err}")
