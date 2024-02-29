@@ -19,6 +19,8 @@ The results demonstrate that processing using Gaussian filters and K-space filte
 - [Contributing](#contributing)
 - [License](#license)
 - [Contact](#contact)
+- [Semester Thesis (PDF)](<ETH_CVL_Semester_Thesis_Hamel.pdf>)
+- [Defense PowerPoint (PDF)](<ETH_CVL_Semester_Thesis_Hamel_Defense.pdf>)
 
 ## Prerequisites
 
