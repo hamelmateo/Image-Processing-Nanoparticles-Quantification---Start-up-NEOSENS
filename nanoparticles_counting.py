@@ -104,6 +104,44 @@ def calculate_median_threshold(images: List[np.ndarray]) -> int:
     return int(sum(medians) / len(medians))
 
 
+def load_or_create_single_mask(filenames: List[str], masks_directory_path: str, img_directory_path: str, roi_radius: int) -> np.ndarray:
+    """
+    Creates or loads a single mask to be applied to a list of images.
+
+    Args:
+        filenames (List[str]): List of filenames corresponding to each image. Used to determine image dimensions if a mask does not already exist.
+        masks_directory_path (str): Directory where the single mask is stored or will be saved.
+        img_directory_path (str): Directory where the original images are located. Used to determine dimensions for the mask if it doesn't already exist.
+        roi_radius (int): The radius of the circular ROI to apply.
+
+    Returns:
+        np.ndarray: The mask to be applied to all images.
+
+    Raises:
+        ValueError: If the list of filenames is empty.
+        FileNotFoundError: If the specified image directory does not exist.
+    """
+    if not filenames:
+        raise ValueError("The list of filenames is empty.")
+    if not os.path.exists(img_directory_path):
+        raise FileNotFoundError(f"The specified image directory does not exist: {img_directory_path}")
+    if not os.path.exists(masks_directory_path):
+        os.makedirs(masks_directory_path)
+    
+    mask_path = os.path.join(masks_directory_path, "universal_mask.jpg")
+    if os.path.exists(mask_path):
+        # Load the existing mask
+        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+    else:
+        # Create a new mask based on the first image dimensions
+        image_path = os.path.join(img_directory_path, filenames[0])
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        mask = get_circle_roi(image, roi_radius)  # Assumes `get_circle_roi` can take image.shape and roi_radius
+        cv2.imwrite(mask_path, mask)
+
+    return mask
+
+
 def load_or_create_masks(filenames: List[str], masks_directory_path: str, img_directory_path: str, roi_radius:int) -> List[np.ndarray]:
     """
     Loads or creates masks for a list of images.
@@ -191,13 +229,13 @@ def get_circle_roi(image: np.ndarray, roi_radius: int) -> np.ndarray:
     return mask
 
 
-def apply_masking(images: List[np.ndarray], masks: List[np.ndarray], filenames: List[str], output_folder: str) -> List[Tuple[np.ndarray, str]]:
+def apply_masking(images: List[np.ndarray], mask: np.ndarray, filenames: List[str], output_folder: str) -> List[np.ndarray]:
     """
-    Apply pre-defined masks to a list of images.
+    Apply a single pre-defined mask to a list of images.
 
     Args:
         images (List[np.ndarray]): List of images to apply the mask to.
-        masks (List[np.ndarray]): List of masks for each image.
+        mask (np.ndarray): A single mask to be applied to all images.
         filenames (List[str]): List of filenames corresponding to each image.
         output_folder (str): Directory where masked images will be saved.
 
@@ -205,26 +243,27 @@ def apply_masking(images: List[np.ndarray], masks: List[np.ndarray], filenames: 
         List[np.ndarray]: List of masked images.
 
     Raises:
-        ValueError: If the list of segmented images or masks are empty or if the number of images and filenames do not match. 
+        ValueError: If the list of segmented images is empty or if the number of images and filenames do not match. 
     """
-    if not images or not masks:
-        raise ValueError("The lists of segmented images or masks are empty.")
-    if len(images) != len(masks) or len(masks) != len(filenames):
-        raise ValueError("All lists must have the same number of elements.")
+    if not images:
+        raise ValueError("The list of segmented images is empty.")
+    if len(images) != len(filenames):
+        raise ValueError("The number of images and filenames must match.")
 
     masked_imgs = []
     for i, image in enumerate(images):
         # Apply the pre-defined mask to the segmented image
-        masked_img = cv2.bitwise_and(image, image, mask=masks[i])
+        masked_img = cv2.bitwise_and(image, image, mask=mask)  # Use the single mask here
 
         # Save the final masked image
         masked_filename = f"masked_{filenames[i]}"
         cv2.imwrite(os.path.join(output_folder, masked_filename), masked_img)
 
-        # Append the masked image and filename to the list
-        masked_imgs.append(masked_img)
+        # Append the masked image to the list
+        masked_imgs.append(masked_img) 
 
     return masked_imgs
+
 
 
 def count_white_pixels(binary_image: np.ndarray) -> int:

@@ -9,6 +9,7 @@ try:
     import time
     import json
     from typing import List, Tuple
+    import shutil
 
     # Third-party Library Imports
     import cv2
@@ -112,7 +113,25 @@ def save_results_to_excel(data: List[Tuple[str, int]], output_folder: str) -> No
         raise
 
 
-def fine_tune_parameters(raw_images: List[np.ndarray], filenames: List[str], config: dict, masks: List[np.ndarray]) -> dict:
+def clean_directory(folder_path):
+    """
+    Deletes all files and folders in the specified directory.
+
+    Args:
+        folder_path (str): Path to the directory to clean.
+    """
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f'Failed to delete {file_path}. Reason: {e}')
+
+
+def fine_tune_parameters(raw_images: List[np.ndarray], filenames: List[str], config: dict, mask: np.ndarray) -> dict:
     """
     Fine-tune parameters for image segmentation based on the thresholding method.
 
@@ -120,7 +139,7 @@ def fine_tune_parameters(raw_images: List[np.ndarray], filenames: List[str], con
         raw_images (List[np.ndarray]): List of raw images.
         filenames (List[str]): List of filenames corresponding to the images.
         config (dict): Configuration settings.
-        masks (List[np.ndarray]): Masks used for image segmentation.
+        mask (np.ndarray): Mask used for image segmentation.
 
     Returns:
         dict: A dictionary containing the results of fine-tuning for each set of parameters.
@@ -141,7 +160,7 @@ def fine_tune_parameters(raw_images: List[np.ndarray], filenames: List[str], con
 
                     white_pixel_counts = []
                     for i, seg_image in enumerate(segmented_images):
-                        masked_img = cv2.bitwise_and(seg_image, seg_image, mask=masks[i])
+                        masked_img = cv2.bitwise_and(seg_image, seg_image, mask)
 
                         masked_filename = f"masked_{filenames[i]}"
                         cv2.imwrite(os.path.join(MASKED_IMAGES_DIRECTORY, masked_filename), masked_img)
@@ -151,23 +170,23 @@ def fine_tune_parameters(raw_images: List[np.ndarray], filenames: List[str], con
                     results[f'adaptive_{block_size}_{constant}'] = white_pixel_counts
 
         elif THRESHOLD_METHOD == 'fixed':
-            threshold_values = [135, 155, 175, 210]
+            threshold_values = [100, 115, 125, 135, 145, 155, 165, 175, 185, 195, 210]
 
             for threshold_value in threshold_values:
-                # NEED TO MODIFY 'APPLY_NANOPARTICLES_SEGMENTATION' DEFINITION
+
+                # Apply segmentation with the current threshold value
                 segmented_images = np_count.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config, threshold_value)
-
+                
+                # Apply masks using the apply_masking function
+                masked_images = np_count.apply_masking(segmented_images, mask, filenames, MASKED_IMAGES_DIRECTORY)
+                
                 white_pixel_counts = []
-                for i, seg_image in enumerate(segmented_images):
-                    masked_img = cv2.bitwise_and(seg_image, seg_image, mask=masks[i])
-
-                    masked_filename = f"masked_{filenames[i]}"
-                    cv2.imwrite(os.path.join(MASKED_IMAGES_DIRECTORY, masked_filename), masked_img)
-                    count = np_count.count_white_pixels(masked_img)
+                for img in masked_images:
+                    count = np_count.count_white_pixels(img)
                     white_pixel_counts.append(count)
 
                 results[f'fixed_thresh{threshold_value}'] = white_pixel_counts
-
+                
     except Exception as e:
         raise Exception(f"Error during fine-tuning: {e}")
 
@@ -182,29 +201,34 @@ def main() -> None:
     of results. Execution time for each major step is printed to the console.
     """
     try:
+        # Clean directories
+        clean_directory(PROCESSED_IMAGES_DIRECTORY)
+        clean_directory(MASKED_IMAGES_DIRECTORY)
+        clean_directory(SEGMENTED_IMAGES_DIRECTORY)
+        
         # Load images
         start_time = time.time()
         raw_images, filenames = load_grayscale_images(RAW_IMAGES_DIRECTORY)
         end_time = time.time()
         print(f"Execution time for loading images: {end_time - start_time:.4f} seconds")
     
-
+        """
         # 1. Raw images processing
         start_time = time.time()
         processed_images = ip.process_images(raw_images, filenames, TEMPORAL_AVERAGE_WINDOW_SIZE, MEDIAN_FILTER_KERNEL_SIZE, GAUSSIAN_FILTER_KERNEL_SIZE, 
                                                            GAUSSIAN_FILTER_SIGMA, KSPACE_FILTER_CUTOFF_FREQ, CLAHE_CLIP_LIMIT, CLAHE_TILE_GRID_SIZE, PROCESSED_IMAGES_DIRECTORY)
         end_time = time.time()
         print(f"Execution time for processing images: {end_time - start_time:.4f} seconds")
-        
+        """
 
         # 2. Nanoparticle identification
         start_time = time.time()
         # Load or create signal masks
-        masks = np_count.load_or_create_masks(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
+        mask = np_count.load_or_create_single_mask(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
         print('Masks loaded/created')
 
         if ENABLE_FINE_TUNING:
-            fine_tuning_results = fine_tune_parameters(raw_images, filenames, config, masks)
+            fine_tuning_results = fine_tune_parameters(raw_images, filenames, config, mask)
             # Convert the results to a DataFrame
             df_counts = pd.DataFrame(fine_tuning_results)
             df_counts.insert(0, 'Filename', filenames)
@@ -218,11 +242,11 @@ def main() -> None:
 
         else:
             # Segment images
-            segmented_images = np_count.apply_nanoparticles_segmentation(processed_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
+            segmented_images = np_count.apply_nanoparticles_segmentation(raw_images, filenames, SEGMENTED_IMAGES_DIRECTORY, config)
             print('Features segmented')
             
             # Apply masks
-            masked_images = np_count.apply_masking(segmented_images, masks, filenames, MASKED_IMAGES_DIRECTORY)
+            masked_images = np_count.apply_masking(segmented_images, mask, filenames, MASKED_IMAGES_DIRECTORY)
             print('Masking Applied')
             end_time = time.time()
             print(f"Execution time for identifying nanoparticles: {end_time - start_time:.4f} seconds")
@@ -231,9 +255,9 @@ def main() -> None:
             start_time = time.time()
             counts = [(filename, np_count.count_white_pixels(img)) for img, filename in zip(masked_images, filenames)]
             save_results_to_excel(counts, RESULTS_DIRECTORY)
-            print(f"Analysis completed. Results are available in {RESULTS_DIRECTORY}") 
+            print(f"Analysis completed. Results are available in {RESULTS_DIRECTORY}")
             end_time = time.time()
-            print(f"Execution time for quantifying naoparticles: {end_time - start_time:.4f} seconds")
+            print(f"Execution time for quantifying nanoparticles: {end_time - start_time:.4f} seconds")
         
 
     except FileNotFoundError as fnf_err:
