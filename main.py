@@ -165,7 +165,6 @@ def plot_white_pixel_count_vs_time(counts, time_interval, output_folder):
     plt.close()
 
 
-
 def fine_tune_parameters(raw_images: List[np.ndarray], filenames: List[str], config: dict, mask: np.ndarray) -> dict:
     """
     Fine-tune parameters for image segmentation based on the thresholding method.

@@ -265,7 +265,6 @@ def apply_masking(images: List[np.ndarray], mask: np.ndarray, filenames: List[st
     return masked_imgs
 
 
-
 def count_white_pixels(binary_image: np.ndarray) -> int:
     """
     Count the number of white pixels in a binary image.
