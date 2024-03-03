@@ -259,7 +259,13 @@ def main() -> None:
         # 2. Nanoparticle identification
         start_time = time.time()
         # Load or create signal masks
-        mask = np_count.load_or_create_masks(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
+        if TIME_RESOLVED_IMAGES:
+            # TIME_RESOLVED_IMAGES is True, use a single mask for all images
+            mask = np_count.load_or_create_single_mask(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY)
+            masks = [mask] * len(raw_images)  # Duplicate the single mask for each image
+        else:
+            # TIME_RESOLVED_IMAGES is False, create individual masks for each image
+            mask = np_count.load_or_create_masks(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY)
         print('Masks loaded/created')
 
         if ENABLE_FINE_TUNING:

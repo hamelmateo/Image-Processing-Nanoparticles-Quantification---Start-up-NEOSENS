@@ -104,87 +104,107 @@ def calculate_median_threshold(images: List[np.ndarray]) -> int:
     return int(sum(medians) / len(medians))
 
 
-def load_or_create_single_mask(filenames: List[str], masks_directory_path: str, img_directory_path: str, roi_radius: int) -> np.ndarray:
+def select_and_create_mask(image_path: str, mask_path: str) -> np.ndarray:
     """
-    Creates or loads a single mask to be applied to a list of images.
+    Allows the user to select a circular ROI on the image and creates a mask based on that ROI.
 
     Args:
-        filenames (List[str]): List of filenames corresponding to each image. Used to determine image dimensions if a mask does not already exist.
-        masks_directory_path (str): Directory where the single mask is stored or will be saved.
-        img_directory_path (str): Directory where the original images are located. Used to determine dimensions for the mask if it doesn't already exist.
-        roi_radius (int): The radius of the circular ROI to apply.
+        image_path (str): Path to the image on which to select the ROI.
+        mask_path (str): Path where the mask will be saved.
 
     Returns:
-        np.ndarray: The mask to be applied to all images.
-
-    Raises:
-        ValueError: If the list of filenames is empty.
-        FileNotFoundError: If the specified image directory does not exist.
+        np.ndarray: The created mask.
     """
-    if not filenames:
-        raise ValueError("The list of filenames is empty.")
-    if not os.path.exists(img_directory_path):
-        raise FileNotFoundError(f"The specified image directory does not exist: {img_directory_path}")
-    if not os.path.exists(masks_directory_path):
-        os.makedirs(masks_directory_path)
-    
-    mask_path = os.path.join(masks_directory_path, "universal_mask.jpg")
-    if os.path.exists(mask_path):
-        # Load the existing mask
-        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-    else:
-        # Create a new mask based on the first image dimensions
-        image_path = os.path.join(img_directory_path, filenames[0])
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-        mask = get_circle_roi(image, roi_radius)  # Assumes `get_circle_roi` can take image.shape and roi_radius
-        cv2.imwrite(mask_path, mask)
+    # Load the image
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        raise FileNotFoundError(f"Image not found at {image_path}")
+
+    # Display the image and wait for the user to select a circular ROI
+    roi = cv2.selectROI("Image", image, fromCenter=False, showCrosshair=True)
+    cv2.destroyWindow("Image")
+
+    # ROI returned as x, y (top left corner) and width, height
+    x, y, w, h = roi
+    center = (x + w // 2, y + h // 2)
+    radius = min(w // 2, h // 2)
+
+    # Create a black mask
+    mask = np.zeros_like(image)
+
+    # Draw a filled circle in the mask based on the selected ROI
+    cv2.circle(mask, center, radius, (255), thickness=-1)
+
+    # Save the mask
+    cv2.imwrite(mask_path, mask)
 
     return mask
 
 
-def load_or_create_masks(filenames: List[str], masks_directory_path: str, img_directory_path: str, roi_radius:int) -> List[np.ndarray]:
+def select_and_create_mask(image_path: str, mask_path: str, scale_factor: float = 0.25) -> np.ndarray:
     """
-    Loads or creates masks for a list of images.
+    Allows the user to select an ROI on a scaled version of the image and creates a mask based on that ROI
+    applied to the original high-resolution image.
+
+    Args:
+        image_path (str): Path to the image on which to select the ROI.
+        mask_path (str): Path where the mask will be saved.
+        scale_factor (float): Factor to scale the image by for ROI selection. Default is 0.5 (50%).
+
+    Returns:
+        np.ndarray: The created mask for the original image.
+    """
+    # Load the original image
+    original_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if original_image is None:
+        raise FileNotFoundError(f"Image not found at {image_path}")
+
+    # Scale down the image for ROI selection
+    height, width = original_image.shape
+    scaled_image = cv2.resize(original_image, (int(width * scale_factor), int(height * scale_factor)))
+
+    # Display the scaled image and wait for the user to select an ROI
+    roi = cv2.selectROI("Image", scaled_image, fromCenter=False, showCrosshair=True)
+    cv2.destroyWindow("Image")
+
+    # Scale the ROI coordinates back to the original image size
+    x, y, w, h = roi
+    x, y, w, h = int(x / scale_factor), int(y / scale_factor), int(w / scale_factor), int(h / scale_factor)
+
+    # Create a mask for the original image based on the selected ROI
+    mask = np.zeros_like(original_image)
+    cv2.rectangle(mask, (x, y), (x + w, y + h), 255, -1)  # Using a rectangle as an example; adjust as needed
+
+    # Save the mask
+    cv2.imwrite(mask_path, mask)
+
+    return mask
+
+
+
+def load_or_create_masks(filenames: List[str], masks_directory_path: str, img_directory_path: str) -> List[np.ndarray]:
+    """
+    Loads or creates individual masks for each image if TIME_RESOLVED_IMAGES is False.
 
     Args:
         filenames (List[str]): List of filenames corresponding to each image.
         masks_directory_path (str): Directory where masks are stored or will be saved.
         img_directory_path (str): Directory where the original images are located.
-        roi_radius (int): The radius of the circular ROI to apply.
 
     Returns:
         List[np.ndarray]: List of masks for each image.
-
-    Raises:
-        ValueError: If the list of filenames is empty.
-        FileNotFoundError: If the specified image directory does not exist.
     """
-    if not filenames:
-        raise ValueError("The list of filenames is empty.")
-    if not os.path.exists(img_directory_path):
-        raise FileNotFoundError(f"The specified image directory does not exist: {img_directory_path}")
-    if not os.path.exists(masks_directory_path):
-        os.makedirs(masks_directory_path)
-    
     masks = []
-
     for filename in filenames:
         mask_path = os.path.join(masks_directory_path, f"mask_{filename}")
         if os.path.exists(mask_path):
             # Load the existing mask
             mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
         else:
-            # Create a new mask and save it
+            # Prompt user to create a new mask for each image
             image_path = os.path.join(img_directory_path, filename)
-            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-            mask = get_circle_roi(image, roi_radius)
-            cv2.imwrite(mask_path, mask)
-
-            # Save the new mask in the masks directory
-            cv2.imwrite(mask_path, mask)
-            
+            mask = select_and_create_mask(image_path, mask_path)  # Assumes implementation of select_and_create_mask
         masks.append(mask)
-
     return masks
 
 
@@ -229,13 +249,13 @@ def get_circle_roi(image: np.ndarray, roi_radius: int) -> np.ndarray:
     return mask
 
 
-def apply_masking(images: List[np.ndarray], mask: np.ndarray, filenames: List[str], output_folder: str) -> List[np.ndarray]:
+def apply_masking(images: List[np.ndarray], masks: List[np.ndarray], filenames: List[str], output_folder: str) -> List[np.ndarray]:
     """
-    Apply a single pre-defined mask to a list of images.
+    Apply pre-defined masks to a list of images.
 
     Args:
-        images (List[np.ndarray]): List of images to apply the mask to.
-        mask (np.ndarray): A single mask to be applied to all images.
+        images (List[np.ndarray]): List of images to apply the masks to.
+        masks (List[np.ndarray]): List of masks to be applied to the images. Can be a list with a single mask repeated if using the same mask for all images.
         filenames (List[str]): List of filenames corresponding to each image.
         output_folder (str): Directory where masked images will be saved.
 
@@ -243,24 +263,24 @@ def apply_masking(images: List[np.ndarray], mask: np.ndarray, filenames: List[st
         List[np.ndarray]: List of masked images.
 
     Raises:
-        ValueError: If the list of segmented images is empty or if the number of images and filenames do not match. 
+        ValueError: If the list of images, masks, or filenames are empty or if the numbers do not match. 
     """
-    if not images:
-        raise ValueError("The list of segmented images is empty.")
-    if len(images) != len(filenames):
-        raise ValueError("The number of images and filenames must match.")
+    if not images or not masks:
+        raise ValueError("The lists of images and masks cannot be empty.")
+    if len(images) != len(masks) or len(images) != len(filenames):
+        raise ValueError("The numbers of images, masks, and filenames must match.")
 
     masked_imgs = []
-    for i, image in enumerate(images):
-        # Apply the pre-defined mask to the segmented image
-        masked_img = cv2.bitwise_and(image, image, mask=mask)  # Use the single mask here
+    for i, (image, mask) in enumerate(zip(images, masks)):
+        # Apply the corresponding mask to the image
+        masked_img = cv2.bitwise_and(image, image, mask=mask)
 
         # Save the final masked image
         masked_filename = f"masked_{filenames[i]}"
         cv2.imwrite(os.path.join(output_folder, masked_filename), masked_img)
 
         # Append the masked image to the list
-        masked_imgs.append(masked_img) 
+        masked_imgs.append(masked_img)
 
     return masked_imgs
 
