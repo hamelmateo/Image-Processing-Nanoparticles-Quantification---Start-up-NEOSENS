@@ -51,6 +51,7 @@ CLAHE_TILE_GRID_SIZE = config['CLAHE_TILE_GRID_SIZE']
 
 THRESHOLD_METHOD = config['THRESHOLDING_METHOD']
 ENABLE_FINE_TUNING = config["ENABLE_FINE_TUNING"]
+TIME_RESOLVED_IMAGES = config["TIME_RESOLVED_IMAGES"]
 
 ROI_RADIUS = config['ROI_RADIUS']
 IMAGE_TIME_INTERVAL = config['IMAGE_TIME_INTERVAL']
@@ -258,7 +259,7 @@ def main() -> None:
         # 2. Nanoparticle identification
         start_time = time.time()
         # Load or create signal masks
-        mask = np_count.load_or_create_single_mask(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
+        mask = np_count.load_or_create_masks(filenames, MASKS_DIRECTORY, RAW_IMAGES_DIRECTORY, ROI_RADIUS)
         print('Masks loaded/created')
 
         if ENABLE_FINE_TUNING:
@@ -295,7 +296,8 @@ def main() -> None:
         
 
         # Plot white pixel count vs. time
-        plot_white_pixel_count_vs_time([count for _, count in counts], IMAGE_TIME_INTERVAL, RESULTS_DIRECTORY)
+        if TIME_RESOLVED_IMAGES:
+            plot_white_pixel_count_vs_time([count for _, count in counts], IMAGE_TIME_INTERVAL, RESULTS_DIRECTORY)
 
     except FileNotFoundError as fnf_err:
         print(f"Error: {fnf_err}")
