@@ -104,52 +104,15 @@ def calculate_median_threshold(images: List[np.ndarray]) -> int:
     return int(sum(medians) / len(medians))
 
 
-def select_and_create_mask(image_path: str, mask_path: str) -> np.ndarray:
-    """
-    Allows the user to select a circular ROI on the image and creates a mask based on that ROI.
-
-    Args:
-        image_path (str): Path to the image on which to select the ROI.
-        mask_path (str): Path where the mask will be saved.
-
-    Returns:
-        np.ndarray: The created mask.
-    """
-    # Load the image
-    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    if image is None:
-        raise FileNotFoundError(f"Image not found at {image_path}")
-
-    # Display the image and wait for the user to select a circular ROI
-    roi = cv2.selectROI("Image", image, fromCenter=False, showCrosshair=True)
-    cv2.destroyWindow("Image")
-
-    # ROI returned as x, y (top left corner) and width, height
-    x, y, w, h = roi
-    center = (x + w // 2, y + h // 2)
-    radius = min(w // 2, h // 2)
-
-    # Create a black mask
-    mask = np.zeros_like(image)
-
-    # Draw a filled circle in the mask based on the selected ROI
-    cv2.circle(mask, center, radius, (255), thickness=-1)
-
-    # Save the mask
-    cv2.imwrite(mask_path, mask)
-
-    return mask
-
-
 def select_and_create_mask(image_path: str, mask_path: str, scale_factor: float = 0.25) -> np.ndarray:
     """
-    Allows the user to select an ROI on a scaled version of the image and creates a mask based on that ROI
-    applied to the original high-resolution image.
+    Allows the user to select a circular ROI on a scaled version of the image and creates a mask based on that ROI
+    applied to the original high-resolution image. The selection is made more visual with real-time feedback.
 
     Args:
         image_path (str): Path to the image on which to select the ROI.
         mask_path (str): Path where the mask will be saved.
-        scale_factor (float): Factor to scale the image by for ROI selection. Default is 0.5 (50%).
+        scale_factor (float): Factor to scale the image by for ROI selection. Default is 0.25 (25%).
 
     Returns:
         np.ndarray: The created mask for the original image.
@@ -161,25 +124,51 @@ def select_and_create_mask(image_path: str, mask_path: str, scale_factor: float 
 
     # Scale down the image for ROI selection
     height, width = original_image.shape
-    scaled_image = cv2.resize(original_image, (int(width * scale_factor), int(height * scale_factor)))
+    scaled_image = cv2.resize(original_image, (int(width * scale_factor), int(height * scale_factor)), interpolation=cv2.INTER_AREA)
 
-    # Display the scaled image and wait for the user to select an ROI
-    roi = cv2.selectROI("Image", scaled_image, fromCenter=False, showCrosshair=True)
-    cv2.destroyWindow("Image")
+    roi_center = None
+    roi_radius = 0
 
-    # Scale the ROI coordinates back to the original image size
-    x, y, w, h = roi
-    x, y, w, h = int(x / scale_factor), int(y / scale_factor), int(w / scale_factor), int(h / scale_factor)
+    def mouse_callback(event, x, y, flags, param):
+        nonlocal roi_center, roi_radius
+        if event == cv2.EVENT_LBUTTONDOWN:
+            roi_center = (x, y)
+        elif event == cv2.EVENT_MOUSEMOVE and roi_center:
+            roi_radius = int(np.sqrt((x - roi_center[0])**2 + (y - roi_center[1])**2))
+        elif event == cv2.EVENT_LBUTTONUP:
+            roi_radius = int(np.sqrt((x - roi_center[0])**2 + (y - roi_center[1])**2))
+
+    cv2.namedWindow("Select Circular ROI", cv2.WINDOW_AUTOSIZE)
+    cv2.setMouseCallback("Select Circular ROI", mouse_callback)
+
+    # Display the image and allow the user to select an ROI
+    while True:
+        img_copy = scaled_image.copy()
+        if roi_center and roi_radius > 0:
+            cv2.circle(img_copy, roi_center, roi_radius, (255, 0, 0), 2)  # Draw the ROI
+        cv2.imshow("Select Circular ROI", img_copy)
+        k = cv2.waitKey(1) & 0xFF
+        if k == 27:  # ESC key to exit without selection
+            print("ROI selection cancelled.")
+            cv2.destroyWindow("Select Circular ROI")
+            return None
+        elif k == 13:  # Enter key to confirm the selection
+            break
+
+    cv2.destroyWindow("Select Circular ROI")
+
+    # Scale the ROI center and radius back to the original image size
+    center_x, center_y = [int(coord / scale_factor) for coord in roi_center]
+    radius = int(roi_radius / scale_factor)
 
     # Create a mask for the original image based on the selected ROI
     mask = np.zeros_like(original_image)
-    cv2.rectangle(mask, (x, y), (x + w, y + h), 255, -1)  # Using a rectangle as an example; adjust as needed
+    cv2.circle(mask, (center_x, center_y), radius, 255, -1)  # Create a circular mask
 
     # Save the mask
     cv2.imwrite(mask_path, mask)
 
     return mask
-
 
 
 def load_or_create_masks(filenames: List[str], masks_directory_path: str, img_directory_path: str) -> List[np.ndarray]:

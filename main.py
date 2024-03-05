@@ -166,6 +166,46 @@ def plot_white_pixel_count_vs_time(counts, time_interval, output_folder):
     plt.close()
 
 
+def create_comparison_images(raw_img_dir: str, segmented_img_dir: str, result_dir: str, filenames: List[str]) -> None:
+    """
+    Creates side-by-side comparison images of raw and segmented images and saves them to the result directory.
+
+    Args:
+        raw_img_dir (str): Directory containing the raw images.
+        segmented_img_dir (str): Directory containing the segmented images.
+        result_dir (str): Directory to save the comparison images.
+        filenames (List[str]): List of filenames for the images to compare.
+    """
+    if not os.path.exists(result_dir):
+        os.makedirs(result_dir)
+
+    for filename in filenames:
+        raw_path = os.path.join(raw_img_dir, filename)
+        segmented_path = os.path.join(segmented_img_dir, f"segmented_{filename.split('.')[0]}_fixed.png")
+        result_path = os.path.join(result_dir, f"comparison_{filename}")
+
+        # Load images
+        raw_image = cv2.imread(raw_path)
+        segmented_image = cv2.imread(segmented_path)
+
+        if raw_image is None or segmented_image is None:
+            print(f"Could not load images for {filename}. Skipping...")
+            continue
+
+        # Resize for consistent comparison
+        height = max(raw_image.shape[0], segmented_image.shape[0])
+        raw_image_resized = cv2.resize(raw_image, (int(raw_image.shape[1] * height / raw_image.shape[0]), height))
+        segmented_image_resized = cv2.resize(segmented_image, (int(segmented_image.shape[1] * height / segmented_image.shape[0]), height))
+
+        # Combine images side by side
+        comparison_image = np.hstack((raw_image_resized, segmented_image_resized))
+
+        # Save the combined image
+        cv2.imwrite(result_path, comparison_image)
+
+    print("Comparison images created successfully.")
+
+
 def fine_tune_parameters(raw_images: List[np.ndarray], filenames: List[str], config: dict, mask: np.ndarray) -> dict:
     """
     Fine-tune parameters for image segmentation based on the thresholding method.
@@ -304,6 +344,11 @@ def main() -> None:
         # Plot white pixel count vs. time
         if TIME_RESOLVED_IMAGES:
             plot_white_pixel_count_vs_time([count for _, count in counts], IMAGE_TIME_INTERVAL, RESULTS_DIRECTORY)
+
+        # Create side-by-side comparison images for easy visual inspection
+        create_comparison_images(RAW_IMAGES_DIRECTORY, SEGMENTED_IMAGES_DIRECTORY, RESULTS_DIRECTORY, filenames)
+        print("Side-by-side comparison images have been saved to the results directory.")
+
 
     except FileNotFoundError as fnf_err:
         print(f"Error: {fnf_err}")
